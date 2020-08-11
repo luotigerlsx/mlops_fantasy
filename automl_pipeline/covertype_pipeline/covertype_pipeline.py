@@ -146,7 +146,6 @@ def bq_automl_pipeline(project_id,
     )
 
     # Retrieve the evaluation metric from the model evaluations
-    # test_model_path='projects/66820330676/locations/us-central1/models/TBL237954107460026368'
     retrieve_metrics = retrieve_classification_metrics_op(
         project_id=project_id,
         region=region,
