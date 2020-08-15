@@ -269,7 +269,7 @@ def bq_automl_pipeline(project_id,
 
         # Deploy the model if the primary metric is better than threshold
         def check_metrics(value, threshold):
-            return value < threshold if value == 'log_loss' else value > threshold
+            return value < threshold if evaluation_metrics == 'log_loss' else value > threshold
 
         with kfp.dsl.Condition(check_metrics(retrieve_metrics.outputs['metric_value'], deployment_threshold),
                                'check-model-performance'):
