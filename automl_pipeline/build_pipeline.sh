@@ -17,6 +17,7 @@
 # the pipelines and pipelines components
 
 SUBSTITUTIONS=\
+TAG_NAME=$TAG_NAME,\
 _BASE_IMAGE_NAME=base_image,\
 _INVERSE_PROXY_HOSTNAME=$INVERSE_PROXY_HOSTNAME,\
 _PIPELINE_FOLDER=covertype_pipeline,\
