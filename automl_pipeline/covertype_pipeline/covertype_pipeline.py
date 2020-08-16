@@ -145,13 +145,23 @@ def retrieve_classification_metrics(project_id: str,
 
 def automl_deploy_model(project_id: str,
                         region: str,
-                        model_path: str):
+                        model_path: str,
+                        evaluation_metrics: str,
+                        deployment_threshold: float,
+                        metric_value: float):
     """Deploy the AutoML Tables model.
 
     Args:
         project_id (str): The project hosting the AutoML dataset.
         region (str): The AutoML Tables region.
         model_path (str): The AutoML Tables model path.
+        evaluation_metrics (str): The evaluation metric value to check before deployment.
+            Valid values are ['au_prc', 'au_roc', 'log_loss']. Defaults to 'log_loss'.
+        deployment_threshold (float): The evaluation threshold requirement for model deployment.
+            If the evaluation metrics is 'log_loss', the model will be deployed only if the metric value
+            is less than the threshold; otherwise the metric value must be greater than the threshold
+            in order to deploy.
+        metric_value (float): The evaluation metric value requirement.
     """
     import logging
     from google.cloud import automl_v1beta1 as automl
@@ -162,12 +172,21 @@ def automl_deploy_model(project_id: str,
 
     model = client.get_model(model_name=model_path)
     if model.deployment_state != enums.Model.DeploymentState.DEPLOYED:
-        logging.info("Starting model deployment: {}".format(model_path))
-        response = client.deploy_model(model_name=model_path)
-        response.result()  # Wait for operation to complete
-        logging.info("Deployment completed")
+        if evaluation_metrics == 'log_loss':
+            deploy = metric_value < deployment_threshold
+        else:
+            deploy = metric_value > deployment_threshold
+
+        if deploy:
+            logging.info('Starting model deployment: {}'.format(model_path))
+            response = client.deploy_model(model_name=model_path)
+            response.result()  # Wait for operation to complete
+            logging.info('Deployment completed')
+        else:
+            logging.error('Fail to deploy model')
+            raise ValueError('Cannot meet evaluation requirement, abort deployment.')
     else:
-        logging.info("Model already deployed")
+        logging.info('Model already deployed')
 
 
 # Convert the functions to KFP components
@@ -268,9 +287,6 @@ def bq_automl_pipeline(project_id,
             metric_name=evaluation_metrics)
 
         # Deploy the model if the primary metric is better than threshold
-        def check_metrics(value, threshold):
-            return value < threshold if evaluation_metrics == 'log_loss' else value > threshold
-
-        with kfp.dsl.Condition(check_metrics(retrieve_metrics.outputs['metric_value'], deployment_threshold),
-                               'check-model-performance'):
-            automl_deploy_model_op(project_id, region, create_model.outputs['model_path'])
+        automl_deploy_model_op(project_id, region, create_model.outputs['model_path'],
+                               evaluation_metrics, deployment_threshold,
+                               retrieve_metrics.outputs['metric_value'])
