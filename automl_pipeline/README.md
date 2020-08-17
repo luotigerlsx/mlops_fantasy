@@ -41,6 +41,7 @@ export ZONE=[YOUR GKE CLUSTER ZONE]
 export GKE_CLUSTER_NAME=[YOUR GKE CLUSTER]
 export NAMESPACE=default
 export DATASET_ID=covertype_dataset
+export MODEL_GCS_DESTINATION=[GCS LOCATION FOR EXPORTED MODEL]
 
 gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $ZONE
 export INVERSE_PROXY_HOSTNAME=$(kubectl describe configmap inverse-proxy-config -n $NAMESPACE | grep "googleusercontent.com")
