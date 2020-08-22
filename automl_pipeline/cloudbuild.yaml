@@ -49,7 +49,7 @@ steps:
       --run True \
       --params '{"project_id":"$_PROJECT_ID",\
                  "region":"$_REGION","dataset_id":"$_DATASET_ID",\
-                 "gcs_destination":"$_$MODEL_GCS_DESTINATION"}'
+                 "gcs_destination":"$_MODEL_GCS_DESTINATION"}'
   dir: $_PIPELINE_FOLDER
 
 # Push the images to Container Registry
