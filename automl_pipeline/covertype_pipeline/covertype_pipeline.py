@@ -113,7 +113,7 @@ def automl_export_model(model_path: str,
         logging.info('Export model to path: {}'.format(gcs_destination))
         client = automl.AutoMlClient()
         output_config = {'model_format': 'tf_saved_model',
-                         'gcs_destination': gcs_destination}
+                         'gcs_destination': {'output_uri_prefix': gcs_destination}}
         client.export_model(model_path, output_config)
 
 
