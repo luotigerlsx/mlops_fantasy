@@ -1,3 +1,17 @@
+# Copyright 2020 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Kubeflow pipeline using BigQuery for preprocessing and AutoML Tables for modelling."""
 import os
 import time
 from typing import NamedTuple
@@ -26,6 +40,8 @@ automl_split_dataset_table_column_names_op = component_store.load_component('aut
 
 
 def prepare_query(project_id, dataset_id):
+    """Prepare the preprocessing query."""
+
     query_template = """
         SELECT *
         FROM `{{ project_id }}.{{ dataset_id }}.covertype`
@@ -41,6 +57,8 @@ def prepare_query(project_id, dataset_id):
 
 
 def create_bq_job_config():
+    """Create the BigQuery job configuration."""
+
     bq_job_config = bigquery.QueryJobConfig()
     bq_job_config.create_disposition = bigquery.job.CreateDisposition.CREATE_IF_NEEDED
     bq_job_config.write_disposition = bigquery.job.WriteDisposition.WRITE_TRUNCATE
@@ -84,8 +102,24 @@ def automl_deploy_model(project_id: str,
         logging.info("Model already deployed")
 
 
+def automl_export_model(model_path: str,
+                        gcs_destination: str):
+    import logging
+    from google.cloud import automl_v1beta1 as automl
+
+    logging.basicConfig(level=logging.INFO)
+
+    if gcs_destination is not None:
+        logging.info('Export model to path: {}'.format(gcs_destination))
+        client = automl.AutoMlClient()
+        output_config = {'model_format': 'tf_saved_model',
+                         'gcs_destination': {'output_uri_prefix': gcs_destination}}
+        client.export_model(model_path, output_config)
+
+
 retrieve_classification_metrics_op = func_to_container_op(retrieve_classification_metrics, base_image=BASE_IMAGE)
 automl_deploy_model_op = func_to_container_op(automl_deploy_model, base_image=BASE_IMAGE)
+automl_export_model_op = func_to_container_op(automl_export_model, base_image=BASE_IMAGE)
 
 
 @kfp.dsl.pipeline(
@@ -99,7 +133,25 @@ def bq_automl_pipeline(project_id,
                        optimization_objective: str = "MINIMIZE_LOG_LOSS",
                        evaluation_metrics: str = "log_loss",
                        deployment_threshold: float = 0.1,
-                       train_budget: int = 1000):
+                       train_budget: int = 1000,
+                       gcs_destination: str = None):
+    """Example Kubeflow pipeline with BigQuery preprocessing and AutoML Tables modelling.
+
+    Args:
+        project_id (str): The project hosting BigQuery and AutoML resources.
+        region (str): The region for AutoML Table dataset.
+        dataset_id (str): The BigQuery dataset storing the preprocessed data.
+        dataset_location (str): The BigQuery dataset location. Defaults to 'US'.
+        optimization_objective (str): The metric AutoML tables should optimize for. Defaults to 'MINIMIZE_LOG_LOSS'.
+        evaluation_metrics (str): The evaluation metric value to check before deployment.
+            Valid values are ['au_prc', 'au_roc', 'log_loss']. Defaults to 'log_loss'.
+        deployment_threshold (float): The deployment threshold to meet before deploying the model.
+            If the evaluation metrics is 'log_loss', the deployment will happen only if the metric value
+            is less than the threshold. Otherwise, the metric value must be greater than the threshold
+            in order to deploy.
+        train_budget (int): The amount of time (in milli node hours) to spend on training. Defaults to 1000 (1 hour).
+        gcs_destination (str): The GCS prefix to store the exported model. Defaults to None.
+    """
     current_milliseconds = int(time.time() * 1000.0)
     output_table_id = FEATURE_TABLE_ID.format(current_milliseconds)
 
@@ -145,6 +197,9 @@ def bq_automl_pipeline(project_id,
         train_budget_milli_node_hours=train_budget
     )
 
+    # Export the model
+    automl_export_model_op(create_model.outputs['model_path'], gcs_destination)
+
     # Retrieve the evaluation metric from the model evaluations
     retrieve_metrics = retrieve_classification_metrics_op(
         project_id=project_id,
@@ -154,4 +209,4 @@ def bq_automl_pipeline(project_id,
 
     # Deploy the model if the primary metric is better than threshold
     with kfp.dsl.Condition(retrieve_metrics.outputs['metric_value'] < deployment_threshold):
-        deploy_model = automl_deploy_model_op(project_id, region, create_model.outputs['model_path'])
+        automl_deploy_model_op(project_id, region, create_model.outputs['model_path'])

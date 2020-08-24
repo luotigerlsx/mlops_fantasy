@@ -42,12 +42,14 @@ steps:
     - |
       python ../upload_and_run_pipeline.py \
       --endpoint $_INVERSE_PROXY_HOSTNAME \
-      --pipeline_name $_PIPELINE_NAME
+      --pipeline_name $_PIPELINE_NAME \
       --pipeline_version ${_PIPELINE_NAME}_${TAG_NAME} \
-      --pipeline_package $_PIPELINE_PACKAGE
+      --pipeline_package $_PIPELINE_PACKAGE \
       --experiment_name $_EXPERIEMENT_NAME \
       --run True \
-      --params '{"project_id":"$_PROJECT_ID","region":"$_REGION","dataset_id":"$_DATASET_ID"}'
+      --params '{"project_id":"$_PROJECT_ID",\
+                 "region":"$_REGION","dataset_id":"$_DATASET_ID",\
+                 "gcs_destination":"$_MODEL_GCS_DESTINATION"}'
   dir: $_PIPELINE_FOLDER
 
 # Push the images to Container Registry

@@ -17,6 +17,7 @@
 # the pipelines and pipelines components
 
 SUBSTITUTIONS=\
+TAG_NAME=$TAG_NAME,\
 _BASE_IMAGE_NAME=base_image,\
 _INVERSE_PROXY_HOSTNAME=$INVERSE_PROXY_HOSTNAME,\
 _PIPELINE_FOLDER=covertype_pipeline,\
@@ -27,6 +28,7 @@ _EXPERIEMENT_NAME=cover_experiment,\
 _COMPONENT_URL_SEARCH_PREFIX=https://raw.githubusercontent.com/kubeflow/pipelines/0.4.0/components/gcp/,\
 _PROJECT_ID=$PROJECT_ID,\
 _REGION=$REGION,\
-_DATASET_ID=$DATASET_ID
+_DATASET_ID=$DATASET_ID,\
+_MODEL_GCS_DESTINATION=$MODEL_GCS_DESTINATION
 
 gcloud builds submit --config cloudbuild.yaml --substitutions ${SUBSTITUTIONS}
