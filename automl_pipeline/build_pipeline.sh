@@ -19,8 +19,9 @@
 SUBSTITUTIONS=\
 TAG_NAME=$TAG_NAME,\
 _BASE_IMAGE_NAME=base_image,\
+_BASE_IMAGE_FOLDER=automl_pipeline/base_image,\
 _INVERSE_PROXY_HOSTNAME=$INVERSE_PROXY_HOSTNAME,\
-_PIPELINE_FOLDER=covertype_pipeline,\
+_PIPELINE_FOLDER=automl_pipeline/covertype_pipeline,\
 _PIPELINE_DSL=covertype_pipeline.py,\
 _PIPELINE_PACKAGE=covertype_pipeline.yaml,\
 _PIPELINE_NAME=cover_train_pipeline,\
@@ -31,4 +32,4 @@ _REGION=$REGION,\
 _DATASET_ID=$DATASET_ID,\
 _MODEL_GCS_DESTINATION=$MODEL_GCS_DESTINATION
 
-gcloud builds submit --config cloudbuild.yaml --substitutions ${SUBSTITUTIONS}
+gcloud builds submit .. --config cloudbuild.yaml --substitutions ${SUBSTITUTIONS}

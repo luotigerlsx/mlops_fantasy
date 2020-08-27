@@ -191,6 +191,12 @@ def automl_deploy_model(project_id: str,
 
 def automl_export_model(model_path: str,
                         gcs_destination: str):
+    """Export the AutoML Tables model.
+
+    Args:
+        model_path (str): The AutoML Tables model path.
+        gcs_destination (str): The GCS location for the exported model.
+    """
     import logging
     from google.cloud import automl_v1beta1 as automl
 
@@ -222,7 +228,7 @@ def bq_automl_pipeline(project_id,
                        data_missing_threshold: float = 0.1,
                        optimization_objective: str = "MINIMIZE_LOG_LOSS",
                        evaluation_metrics: str = "log_loss",
-                       deployment_threshold: float = 0.1,
+                       deployment_threshold: float = 0.15,
                        train_budget: int = 1000,
                        gcs_destination: str = None):
     """Example Kubeflow pipeline with BigQuery preprocessing and AutoML Tables modelling.
