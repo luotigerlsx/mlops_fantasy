@@ -18,6 +18,7 @@ inputs:
 - {name: data_region, type: String}
 - {name: hptune_region, type: String}
 - {name: data_pipeline_root, type: String}
+- {name: input_data_schema, type: String}
 - {name: training_container_image_uri, type: String}
 - {name: serving_container_image_uri, type: String}
 - {name: custom_job_service_account, type: String}
@@ -31,7 +32,7 @@ outputs:
 - {name: instance_schema, type: Artifact}
 implementation:
   container:
-    image: asia-southeast1-docker.pkg.dev/{{project_id}}/mlops-repo/train-model:latest
+    image: {{af_registry_location}}-docker.pkg.dev/{{project_id}}/{{af_registry_name}}/train-model:latest
     command: [python, /pipelines/component/src/train.py]
     args: [
       --executor_input, {executorInput: null},
@@ -44,6 +45,7 @@ implementation:
       --serving-container-image-uri-output-path, {inputValue: serving_container_image_uri},
       --custom-job-service-account-output-path, {inputValue: custom_job_service_account},
       --input-dataset-output-path, {inputPath: input_dataset},
+      --input_data_schema-output-path, {inputValue: input_data_schema},
       --output-model-output-path, {outputPath: output_model},
       --basic-metrics-output-path, {outputPath: basic_metrics},
       --classification-metrics-output-path, {outputPath: classification_metrics},

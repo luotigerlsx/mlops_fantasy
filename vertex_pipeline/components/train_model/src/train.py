@@ -26,143 +26,168 @@ INSTANCE_SCHEMA_FILENAME = 'instance_schema.yaml'
 
 
 def train_model(
-        project_id: str,
-        data_region: str,
-        data_pipeline_root: str,
-        training_container_image_uri: str,
-        serving_container_image_uri: str,
-        custom_job_service_account: str,
-        input_dataset: Input[Dataset],
-        output_model: Output[Model],
-        basic_metrics: Output[Metrics],
-        classification_metrics: Output[ClassificationMetrics],
-        feature_importance_dataset: Output[Dataset],
-        instance_schema: Output[Artifact],
-        hptune_region: str,
-        vpc_network: str = None,
+    project_id: str,
+    data_region: str,
+    data_pipeline_root: str,
+    training_container_image_uri: str,
+    serving_container_image_uri: str,
+    custom_job_service_account: str,
+    input_dataset: Input[Dataset],
+    input_data_schema: str,
+    output_model: Output[Model],
+    basic_metrics: Output[Metrics],
+    classification_metrics: Output[ClassificationMetrics],
+    feature_importance_dataset: Output[Dataset],
+    instance_schema: Output[Artifact],
+    hptune_region: str = None,
+    vpc_network: str = None,
 ):
-    """ Component to train a model by calling remote custom training pipeline job.
+  """ Component to train a model by calling remote custom training pipeline job.
 
-    Args:
-        project_id: The project ID.
-        data_region: The region for the training job.
-        data_pipeline_root: The staging location for custom job.
-        training_container_image_uri: The container image URI for the training job.
-        serving_container_image_uri: The container image URI for the prediction container.
-        custom_job_service_account: The service account to execute the custom training job.
-        input_dataset: The input artifact of the training dataset.
-        output_model: The output artifact of the model.
-        basic_metrics: The output artifact of the basic metrics.
-        classification_metrics: The output artifact of the classification metrics.
-        feature_importance_dataset: The output artifact of the feature importance CSV file.
-        instance_schema: The output artifact of the schema of the features.
-        hptune_region: The region for hyperparameter tuning job.
-        vpc_network: The VPC network to execute the training job (optional).
-    """
+  Args:
+      project_id: The project ID.
+      data_region: The region for the training job.
+      data_pipeline_root: The staging location for custom job.
+      training_container_image_uri: The container image URI for the
+          training job.
+      serving_container_image_uri: The container image URI for the
+          prediction container.
+      custom_job_service_account: The service account to execute the
+          custom training job.
+      input_dataset: The input artifact of the training dataset.
+      input_data_schema: The schema of the input dataset.
+      output_model: The output artifact of the model.
+      basic_metrics: The output artifact of the basic metrics.
+      classification_metrics: The output artifact of the classification
+          metrics.
+      feature_importance_dataset: The output artifact of the feature
+          importance CSV file.
+      instance_schema: The output artifact of the schema of the features.
+      hptune_region: The region for hyperparameter tuning job.
+      vpc_network: The VPC network to execute the training job (optional).
+  """
 
-    logging.getLogger().setLevel(logging.INFO)
+  logging.getLogger().setLevel(logging.INFO)
 
-    logging.info(f'input dataset URI: {input_dataset.uri}')
-    logging.info(f'output model URI: {output_model.uri}')
-    logging.info(f'custom_job_service_account: {custom_job_service_account}')
+  logging.info(f'input dataset URI: {input_dataset.uri}')
+  logging.info(f'output model URI: {output_model.uri}')
+  logging.info(f'custom_job_service_account: {custom_job_service_account}')
 
-    from google.cloud import aiplatform
+  from google.cloud import aiplatform
 
-    # Call Vertex AI custom job in another region
-    aiplatform.init(
-        project=project_id,
-        location=data_region,
-        staging_bucket=data_pipeline_root)
+  # Call Vertex AI custom job in another region
+  aiplatform.init(
+    project=project_id,
+    location=data_region,
+    staging_bucket=data_pipeline_root)
 
-    job = aiplatform.CustomContainerTrainingJob(
-        display_name='activism-training',
-        location=data_region,
-        container_uri=training_container_image_uri,
-        model_serving_container_image_uri=serving_container_image_uri,
-        model_serving_container_predict_route='/predict',
-        model_serving_container_health_route='/health'
-    )
+  job = aiplatform.CustomContainerTrainingJob(
+    display_name='model-training',
+    location=data_region,
+    container_uri=training_container_image_uri,
+    model_serving_container_image_uri=serving_container_image_uri,
+    model_serving_container_predict_route='/predict',
+    model_serving_container_health_route='/health',
+    model_serving_container_environment_variables={'TRAINING_DATA_SCHEMA':
+                                                     input_data_schema}
+  )
 
-    # Create a millisecond timestamped model display name
-    model_display_name = f'activism-model-{int(datetime.now().timestamp() * 1000)}'
+  # Create a millisecond timestamped model display name
+  model_display_name = f'model-{int(datetime.now().timestamp() * 1000)}'
 
-    # The container is implemented to handle managed dataset
-    # can make use of the same AIP_* env variables
-    # Also provide the metrics artifact URI for the metrics output
-    model = job.run(
-        model_display_name=model_display_name,
-        args=[
-            '--training_data_uri', input_dataset.uri,
-            '--target_label', 'y',
-            '--metrics_output_uri', basic_metrics.uri,
-            '--hp_config_gcp_project_id', project_id,
-            '--hp_config_gcp_region', hptune_region,
-            '--hp_config_suggestions_per_request', 5,
-            '--hp_config_max_trials', 20,
-            '--num_leaves_hp_param_min', 6,
-            '--num_leaves_hp_param_max', 11,
-            '--max_depth_hp_param_min', -1,
-            '--max_depth_hp_param_max', 4,
-            '--num_boost_round', 300,
-            '--min_data_in_leaf', 5,
-        ],
-        replica_count=1,
-        machine_type='n1-standard-4',
-        service_account=custom_job_service_account,
-        network=vpc_network
-    )
+  # The container is implemented to handle managed dataset
+  # can make use of the same AIP_* env variables
+  # Also provide the metrics artifact URI for the metrics output
+  fields = [field.split(':')[0] for field in input_data_schema.split(';')]
+  label = fields[-1]
+  features = fields[0:-1]
 
-    logging.info(f'Training completes with model URI: {model.uri}, Resource Name: {model.resource_name}')
+  train_args = [
+    '--training_data_uri', input_dataset.uri,
+    '--training_data_schema', input_data_schema,
+    '--label', label,
+    '--features', features,
+    '--metrics_output_uri', basic_metrics.uri,
+    '--hp_config_gcp_project_id', project_id,
+    '--hp_config_gcp_region', hptune_region,
+    '--hp_config_suggestions_per_request', 5,
+    '--hp_config_max_trials', 20,
+    '--num_leaves_hp_param_min', 6,
+    '--num_leaves_hp_param_max', 11,
+    '--max_depth_hp_param_min', -1,
+    '--max_depth_hp_param_max', 4,
+    '--num_boost_round', 300,
+    '--min_data_in_leaf', 5,
+  ]
 
-    logging.info('Update output model metadata')
-    output_model.uri = 'aiplatform://v1/' + model.resource_name
-    output_model.metadata['model_gcs_uri'] = model.uri
+  if hptune_region:
+    train_args.append('--perform_hp')
 
-    feature_importance_dataset.uri = os.path.join(model.uri, FEATURE_IMPORTANCE_FILENAME)
-    instance_schema.uri = os.path.join(model.uri, INSTANCE_SCHEMA_FILENAME)
+  model = job.run(
+    model_display_name=model_display_name,
+    args=train_args,
+    replica_count=1,
+    machine_type='n1-standard-4',
+    service_account=custom_job_service_account,
+    network=vpc_network
+  )
 
-    # Read confusion matrix returned by the custom job
-    with open(basic_metrics.path, 'rt') as f:
-        metrics_json = json.load(f)
+  logging.info(
+    f'Training completes with model URI: {model.uri}, '
+    f'Resource Name: {model.resource_name}')
 
-    # log the metrics
-    classification_report = metrics_json['classification_report']
-    fpr = metrics_json['fpr']
-    tpr = metrics_json['tpr']
-    thresholds = metrics_json['thresholds']
+  logging.info('Update output model metadata')
+  output_model.uri = 'aiplatform://v1/' + model.resource_name
+  output_model.metadata['model_gcs_uri'] = model.uri
 
-    logging.info('Update basic metrics metadata')
-    basic_metrics.log_metric('precision', classification_report['1']['precision'])
-    basic_metrics.log_metric('recall', classification_report['1']['recall'])
-    basic_metrics.log_metric('accuracy', classification_report['accuracy'])
-    basic_metrics.log_metric('au_roc', metrics_json['au_roc'])
-    basic_metrics.log_metric('au_prc', metrics_json['au_prc'])
+  feature_importance_dataset.uri = os.path.join(
+    model.uri, FEATURE_IMPORTANCE_FILENAME)
+  instance_schema.uri = os.path.join(model.uri, INSTANCE_SCHEMA_FILENAME)
+  instance_schema.label = label
 
-    basic_metrics.metadata['model_name'] = model.resource_name
+  # Read confusion matrix returned by the custom job
+  with open(basic_metrics.path, 'rt') as f:
+    metrics_json = json.load(f)
 
-    logging.info('Update classification metrics metadata')
-    classification_metrics.log_confusion_matrix(categories=["0", "1"], matrix=metrics_json['confusion_matrix'])
-    classification_metrics.log_roc_curve(fpr, tpr, thresholds)
-    classification_metrics.metadata['model_name'] = model.resource_name
+  # log the metrics
+  classification_report = metrics_json['classification_report']
+  fpr = metrics_json['fpr']
+  tpr = metrics_json['tpr']
+  thresholds = metrics_json['thresholds']
+
+  logging.info('Update basic metrics metadata')
+  basic_metrics.log_metric('precision', classification_report['1']['precision'])
+  basic_metrics.log_metric('recall', classification_report['1']['recall'])
+  basic_metrics.log_metric('accuracy', classification_report['accuracy'])
+  basic_metrics.log_metric('au_roc', metrics_json['au_roc'])
+  basic_metrics.log_metric('au_prc', metrics_json['au_prc'])
+
+  basic_metrics.metadata['model_name'] = model.resource_name
+
+  logging.info('Update classification metrics metadata')
+  classification_metrics.log_confusion_matrix(
+    categories=["0", "1"], matrix=metrics_json['confusion_matrix'])
+  classification_metrics.log_roc_curve(fpr, tpr, thresholds)
+  classification_metrics.metadata['model_name'] = model.resource_name
 
 
 def executor_main():
-    import argparse
-    import json
+  import argparse
+  import json
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--executor_input', type=str)
-    parser.add_argument('--function_to_execute', type=str)
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--executor_input', type=str)
+  parser.add_argument('--function_to_execute', type=str)
 
-    args, _ = parser.parse_known_args()
-    executor_input = json.loads(args.executor_input)
-    function_to_execute = globals()[args.function_to_execute]
+  args, _ = parser.parse_known_args()
+  executor_input = json.loads(args.executor_input)
+  function_to_execute = globals()[args.function_to_execute]
 
-    executor = Executor(executor_input=executor_input,
-                        function_to_execute=function_to_execute)
+  executor = Executor(executor_input=executor_input,
+                      function_to_execute=function_to_execute)
 
-    executor.execute()
+  executor.execute()
 
 
 if __name__ == '__main__':
-    executor_main()
+  executor_main()

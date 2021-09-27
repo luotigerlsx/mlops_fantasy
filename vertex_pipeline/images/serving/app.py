@@ -19,7 +19,6 @@ import flask
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from flask import Flask, jsonify, request
 from google.cloud import storage
 
 logging.getLogger().setLevel(logging.INFO)
@@ -30,7 +29,8 @@ logging.getLogger().setLevel(logging.INFO)
 
 MODEL_FILENAME = 'model.txt'
 # Need to set env parameter through
-# serving_container_environment_variables={'TRAINING_DATA_SCHEMA': data_schema},
+# model_serving_container_environment_variables={'TRAINING_DATA_SCHEMA':
+# data_schema},
 DATA_SCHEMA = os.environ['TRAINING_DATA_SCHEMA']
 
 
@@ -56,7 +56,7 @@ model = load_model(os.environ['AIP_STORAGE_URI'])
 # Run the inference server
 ################################################################################
 
-app = Flask(__name__)
+app = flask.Flask(__name__)
 
 
 @app.route('/predict', methods=['POST'])
@@ -64,7 +64,7 @@ def predict():
     """
     For direct API calls through request
     """
-    data = request.get_json(force=True)
+    data = flask.request.get_json(force=True)
     logging.info(f'prediction: received requests containing '
                  f'{len(data["instances"])} records')
 
@@ -81,7 +81,7 @@ def predict():
     predictions = model.predict(df)
 
     output = {'predictions': predictions.tolist()}
-    return jsonify(output)
+    return flask.jsonify(output)
 
 
 @app.route('/health', methods=['GET'])

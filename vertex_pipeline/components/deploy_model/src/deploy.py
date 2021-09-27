@@ -26,101 +26,104 @@ MAX_DEPLOYED_MODELS_PER_ENDPOINT = 2
 
 
 def deploy_model(
-        project_id: str,
-        data_region: str,
-        data_pipeline_root: str,
-        machine_type: str,
-        min_replica_count: int,
-        max_replica_count: int,
-        model: Input[Model],
-        endpoint: Input[Artifact]
+    project_id: str,
+    data_region: str,
+    data_pipeline_root: str,
+    machine_type: str,
+    min_replica_count: int,
+    max_replica_count: int,
+    model: Input[Model],
+    endpoint: Input[Artifact]
 ):
-    """ Deploy the model to a particular endpoint.
+  """ Deploy the model to a particular endpoint.
 
-    Args:
-        project_id: The project ID.
-        data_region: The region for the model and endpoint.
-        data_pipeline_root: The staging location for any custom job.
-        machine_type: The machine type to serve the prediction requests.
-        min_replica_count: The minimum number of instances to server prediction requests.
-        max_replica_count: The maximum number of instances to server prediction requests.
-        model: The input artifact of the model.
-        endpoint: The input artifact of the endpoint.
-    """
+  Args:
+      project_id: The project ID.
+      data_region: The region for the model and endpoint.
+      data_pipeline_root: The staging location for any custom job.
+      machine_type: The machine type to serve the prediction requests.
+      min_replica_count: The minimum number of instances to server
+          prediction requests.
+      max_replica_count: The maximum number of instances to server
+          prediction requests.
+      model: The input artifact of the model.
+      endpoint: The input artifact of the endpoint.
+  """
 
-    logging.getLogger().setLevel(logging.INFO)
+  logging.getLogger().setLevel(logging.INFO)
 
-    logging.info(f'input model URI: {model.uri}')
-    logging.info(f'input endpoint URI: {endpoint.uri}')
+  logging.info(f'input model URI: {model.uri}')
+  logging.info(f'input endpoint URI: {endpoint.uri}')
 
-    if not model.uri.startswith(VERTEX_AI_RESOURCE_PREFIX):
-        raise RuntimeError(f'Invalid model URI {model.uri}')
+  if not model.uri.startswith(VERTEX_AI_RESOURCE_PREFIX):
+    raise RuntimeError(f'Invalid model URI {model.uri}')
 
-    if not endpoint.uri.startswith(VERTEX_AI_RESOURCE_PREFIX):
-        raise RuntimeError(f'Invalid endpoint URI {endpoint.uri}')
+  if not endpoint.uri.startswith(VERTEX_AI_RESOURCE_PREFIX):
+    raise RuntimeError(f'Invalid endpoint URI {endpoint.uri}')
 
-    model_resource_name = model.uri[len(VERTEX_AI_RESOURCE_PREFIX):]
-    endpoint_resource_name = endpoint.uri[len(VERTEX_AI_RESOURCE_PREFIX):]
+  model_resource_name = model.uri[len(VERTEX_AI_RESOURCE_PREFIX):]
+  endpoint_resource_name = endpoint.uri[len(VERTEX_AI_RESOURCE_PREFIX):]
 
-    # Call Vertex AI custom job in another region
-    aiplatform.init(
-        project=project_id,
-        location=data_region,
-        staging_bucket=data_pipeline_root)
+  # Call Vertex AI custom job in another region
+  aiplatform.init(
+    project=project_id,
+    location=data_region,
+    staging_bucket=data_pipeline_root)
 
-    target_model = aiplatform.Model(
-        model_resource_name,
-        project=project_id,
-        location=data_region
-    )
+  target_model = aiplatform.Model(
+    model_resource_name,
+    project=project_id,
+    location=data_region
+  )
 
-    target_endpoint = aiplatform.Endpoint(
-        endpoint_resource_name,
-        project=project_id,
-        location=data_region
-    )
+  target_endpoint = aiplatform.Endpoint(
+    endpoint_resource_name,
+    project=project_id,
+    location=data_region
+  )
 
-    target_model.deploy(
-        endpoint=target_endpoint,
-        traffic_percentage=100,
-        machine_type=machine_type,
-        min_replica_count=min_replica_count,
-        max_replica_count=max_replica_count
-    )
-    logging.info('Model has been deployed to endpoint successfully.')
+  target_model.deploy(
+    endpoint=target_endpoint,
+    traffic_percentage=100,
+    machine_type=machine_type,
+    min_replica_count=min_replica_count,
+    max_replica_count=max_replica_count
+  )
+  logging.info('Model has been deployed to endpoint successfully.')
 
-    # Only keep a maximum of MAX_DEPLOYED_MODELS_PER_ENDPOINT deployed models
-    deployed_models = sorted(
-        [m for m in target_endpoint.list_models()],
-        key=lambda x: x.create_time,
-        reverse=True
-    )
-    logging.info(f'Number of deployed models = {len(deployed_models)}')
+  # Only keep a maximum of MAX_DEPLOYED_MODELS_PER_ENDPOINT deployed models
+  deployed_models = sorted(
+    [m for m in target_endpoint.list_models()],
+    key=lambda x: x.create_time,
+    reverse=True
+  )
+  logging.info(f'Number of deployed models = {len(deployed_models)}')
 
-    if len(deployed_models) > MAX_DEPLOYED_MODELS_PER_ENDPOINT:
-        for deployed_model in deployed_models[MAX_DEPLOYED_MODELS_PER_ENDPOINT:]:
-            logging.info(f'Undeploy model {deployed_model.model}...')
-            target_endpoint.undeploy(deployed_model.id)
-            logging.info(f'Model {deployed_model.model} has been removed from endpoint.')
+  if len(deployed_models) > MAX_DEPLOYED_MODELS_PER_ENDPOINT:
+    for deployed_model in deployed_models[MAX_DEPLOYED_MODELS_PER_ENDPOINT:]:
+      logging.info(f'Undeploy model {deployed_model.model}...')
+      target_endpoint.undeploy(deployed_model.id)
+      logging.info(f'Model {deployed_model.model} has been '
+                   f'removed from endpoint.')
 
 
 def executor_main():
-    import argparse
-    import json
+  import argparse
+  import json
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--executor_input', type=str)
-    parser.add_argument('--function_to_execute', type=str)
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--executor_input', type=str)
+  parser.add_argument('--function_to_execute', type=str)
 
-    args, _ = parser.parse_known_args()
-    executor_input = json.loads(args.executor_input)
-    function_to_execute = globals()[args.function_to_execute]
+  args, _ = parser.parse_known_args()
+  executor_input = json.loads(args.executor_input)
+  function_to_execute = globals()[args.function_to_execute]
 
-    executor = Executor(executor_input=executor_input,
-                        function_to_execute=function_to_execute)
+  executor = Executor(executor_input=executor_input,
+                      function_to_execute=function_to_execute)
 
-    executor.execute()
+  executor.execute()
 
 
 if __name__ == '__main__':
-    executor_main()
+  executor_main()
