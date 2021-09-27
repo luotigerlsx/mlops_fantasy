@@ -12,24 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict, Tuple, Optional, List, Iterable
+
 import argparse
 import datetime
 import json
 import logging
 import os
-import re
-from typing import Dict, Tuple
 
-import gcsfs
+import yaml
+import tensorflow as tf
+import numpy as np
 import lightgbm as lgb
 import pandas as pd
-import yaml
-from google.cloud import aiplatform_v1beta1
-from google.cloud.aiplatform_v1beta1 import Study, Trial
-from lightgbm import Booster
-from numpy.random import RandomState
-from sklearn.metrics import average_precision_score, classification_report, confusion_matrix, roc_auc_score, roc_curve
-from sklearn.model_selection import train_test_split
+from google.cloud import aiplatform_v1beta1 as aip
+from sklearn import metrics as sk_metrics
+from sklearn import model_selection
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -43,49 +41,89 @@ INSTANCE_SCHEMA_FILENAME = 'instance_schema.yaml'
 PROB_THRESHOLD = 0.5
 
 
-def _save_model(model: Booster, model_store: str):
-    model.save_model(MODEL_FILENAME)
-    fs = gcsfs.GCSFileSystem()
-    fs.put_file(MODEL_FILENAME, os.path.join(model_store, MODEL_FILENAME))
+def _save_lgb_model(model: lgb.Booster, model_store: str):
+  file_path = os.path.join(model_store, MODEL_FILENAME)
+  model.save_model(MODEL_FILENAME)
+  tf.io.gfile.copy(MODEL_FILENAME, file_path, overwrite=True)
 
 
-def _save_feature_importance(model: Booster, model_store: str):
-    file_path = os.path.join(model_store, FEATURE_IMPORTANCE_FILENAME)
-    imp = pd.DataFrame(
-        {
-            'feature': model.feature_name(),
-            'importance': model.feature_importance()
-        }
-    )
-    imp.to_csv(file_path, index=False)
-
-
-def _save_analysis_schema(df: pd.DataFrame, model_store: str):
-    # create feature schema
-    properties = {}
-    required = df.columns.tolist()
-
-    for feature in required:
-        if feature in ['sic', 'industry', 'sector']:
-            properties[feature] = {'type': 'string', 'nullable': True}
-        else:
-            properties[feature] = {'type': 'number', 'nullable': True}
-
-    spec = {
-        'type': 'object',
-        'properties': properties,
-        'required': required
-    }
-
-    fs = gcsfs.GCSFileSystem()
-    with fs.open(os.path.join(model_store, INSTANCE_SCHEMA_FILENAME), 'w') as file:
-        yaml.dump(spec, file)
+def _save_lgb_feature_importance(model: lgb.Booster, model_store: str):
+  file_path = os.path.join(model_store, FEATURE_IMPORTANCE_FILENAME)
+  # Pandas can save to GCS directly
+  pd.DataFrame(
+      {
+          'feature': model.feature_name(),
+          'importance': model.feature_importance()
+      }
+  ).to_csv(file_path, index=False)
 
 
 def _save_metrics(metrics: dict, output_path: str):
-    fs = gcsfs.GCSFileSystem()
-    with fs.open(output_path, 'wt') as eval_file:
-        eval_file.write(json.dumps(metrics))
+  with tf.io.gfile.GFile(output_path, 'wt') as eval_file:
+    eval_file.write(json.dumps(metrics))
+
+
+def _save_analysis_schema(df: pd.DataFrame, model_store: str):
+  file_path = os.path.join(model_store, INSTANCE_SCHEMA_FILENAME)
+  # create feature schema
+  properties = {}
+  types_info = df.dtypes
+
+  for i in range(len(types_info)):
+    if types_info.values[i] == object:
+      properties[types_info.index[i]] = {'type': 'string', 'nullable': True}
+    else:
+      properties[types_info.index[i]] = {'type': 'number', 'nullable': True}
+
+  spec = {
+      'type': 'object',
+      'properties': properties,
+      'required': df.columns.tolist()
+  }
+
+  with tf.io.gfile.GFile(file_path, 'w') as file:
+    yaml.dump(spec, file)
+
+
+################################################################################
+# Data loading
+################################################################################
+
+def _split_features_label_columns(df: pd.DataFrame,
+                                  target_label: str
+                                  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  y = df[target_label]
+  x = df.drop(target_label, axis=1)
+
+  return x, y
+
+
+def load_csv_dataset(data_uri_pattern: str,
+                     target_label: str,
+                     features: List[str],
+                     data_schema: Optional[str] = None
+                     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  all_files = tf.io.gfile.glob(data_uri_pattern)
+
+  if data_schema:
+    # [[name, dtype],]
+    fields = dict(field.split(':') for field in data_schema.split(';'))
+    field_names = fields.keys()
+    df = pd.concat((pd.read_csv('gs://' + f, names=field_names, dtype=fields)
+                    for f in all_files), ignore_index=True)
+  else:
+    df = pd.concat((pd.read_csv('gs://' + f)
+                    for f in all_files), ignore_index=True)
+  # Shuffle
+  df = df.sample(frac=1).reset_index(drop=True)
+
+  logging.info(df.head(2))
+
+  x, y = _split_features_label_columns(df, target_label)
+  if features:
+    x = x[features.split(',')]
+
+  return x, y
 
 
 ################################################################################
@@ -93,336 +131,343 @@ def _save_metrics(metrics: dict, output_path: str):
 ################################################################################
 
 
-def train(args: argparse.Namespace):
-    if 'AIP_MODEL_DIR' not in os.environ:
-        raise KeyError(
-            'The `AIP_MODEL_DIR` environment variable has not been' +
-            'set. See https://cloud.google.com/ai-platform-unified/docs/tutorials/image-recognition-custom/training'
-        )
-    output_model_directory = os.environ['AIP_MODEL_DIR']
+def _evaluate_binary_classification(model: lgb.Booster,
+                                    x: pd.DataFrame,
+                                    y: pd.DataFrame) -> Dict[str, object]:
+  # get roc curve metrics, down sample to avoid hitting MLMD 64k size limit
+  roc_size = int(x.shape[0] * 1 / 3)
+  y_hat = model.predict(x)
+  pred = (y_hat > PROB_THRESHOLD).astype(int)
 
-    logging.info(f'AIP_MODEL_DIR: {output_model_directory}')
-    logging.info(f'training_data_uri: {args.training_data_uri}')
-    logging.info(f'metrics_output_uri: {args.metrics_output_uri}')
+  fpr, tpr, thresholds = sk_metrics.roc_curve(
+      y_true=y[:roc_size], y_score=y_hat[:roc_size], pos_label=True)
 
-    # prepare the data
-    x_train, y_train = _load_csv_dataset(args.training_data_uri, args.target_label)
+  # get classification metrics
+  au_roc = sk_metrics.roc_auc_score(y, y_hat)
+  au_prc = sk_metrics.average_precision_score(y, y_hat)
+  classification_metrics = sk_metrics.classification_report(
+      y, pred, output_dict=True)
+  confusion_matrix = sk_metrics.confusion_matrix(y, pred, labels=[0, 1])
 
-    # validation data
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=RandomState(42))
+  metrics = {
+      'classification_report': classification_metrics,
+      'confusion_matrix': confusion_matrix.tolist(),
+      'au_roc': au_roc,
+      'au_prc': au_prc,
+      'fpr': fpr.tolist(),
+      'tpr': tpr.tolist(),
+      'thresholds': thresholds.tolist()
+  }
 
-    # test data
-    x_val, x_test, y_val, y_test = train_test_split(x_val, y_val, test_size=0.5, random_state=RandomState(42))
+  logging.info('The evaluation report: {}'.format(metrics))
 
-    lgb_train = lgb.Dataset(x_train, y_train, categorical_feature="auto")
-    lgb_val = lgb.Dataset(x_val, y_val, categorical_feature="auto")
-
-    # Conduct Vizier trials a.k.a. hyperparameter tuning prior to main training activity
-    best_num_leaves, best_max_depth = _conduct_vizier_trials(args, lgb_train, lgb_val, x_test, y_test)
-    logging.info(f'Vizier best_num_leaves: {best_num_leaves}')
-    logging.info(f'Vizier best_max_depth: {best_max_depth}')
-
-    # Train model with best hyperparameters from the Vizier study
-    logging.info(f'Training with best hyperparameters from Vizier')
-    model = _training_execution(
-        lgb_train, lgb_val, int(args.num_boost_round), best_num_leaves, best_max_depth, int(args.min_data_in_leaf)
-    )
-
-    # save the generated model
-    _save_model(model, output_model_directory)
-    _save_feature_importance(model, output_model_directory)
-    _save_analysis_schema(x_train, output_model_directory)
-
-    # save eval metrics
-    metrics = _evaluate_model(model, x_test, y_test)
-    _save_metrics(metrics, args.metrics_output_uri)
+  return metrics
 
 
-def _training_execution(
-        lgb_train: lgb.Dataset,
-        lgb_val: lgb.Dataset,
-        num_boost_round: int,
-        num_leaves: int,
-        max_depth: int,
-        min_data_in_leaf: int
-) -> lgb.Booster:
-    # train the model
-    params = {
-        'objective': 'binary',
-        'is_unbalance': True,
-        'boosting_type': 'gbdt',
-        'metric': ['auc'],
-        'num_leaves': num_leaves,
-        'max_depth': max_depth,
-        'min_data_in_leaf': min_data_in_leaf
-    }
+def lgb_training(lgb_train: lgb.Dataset,
+                 lgb_val: lgb.Dataset,
+                 num_boost_round: int,
+                 num_leaves: int,
+                 max_depth: int,
+                 min_data_in_leaf: int) -> lgb.Booster:
+  # train the model
+  params = {
+      'objective': 'binary',
+      'is_unbalance': True,
+      'boosting_type': 'gbdt',
+      'metric': ['auc'],
+      'num_leaves': num_leaves,
+      'max_depth': max_depth,
+      'min_data_in_leaf': min_data_in_leaf
+  }
 
-    evals_result = {}  # to record eval results
-    model = lgb.train(params=params,
-                      num_boost_round=num_boost_round,
-                      train_set=lgb_train,
-                      valid_sets=[lgb_val, lgb_train],
-                      valid_names=["test", "train"],
-                      evals_result=evals_result,
-                      verbose_eval=True)
+  eval_results = {}  # to record eval results
+  model = lgb.train(params=params,
+                    num_boost_round=num_boost_round,
+                    train_set=lgb_train,
+                    valid_sets=[lgb_val, lgb_train],
+                    valid_names=["test", "train"],
+                    evals_result=eval_results,
+                    verbose_eval=True)
 
-    return model
-
-
-def _split_features_label_columns(df: pd.DataFrame, target_label: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    y = df[target_label]
-    x = df.drop(target_label, axis=1)
-
-    return x, y
-
-
-def _select_features(df: pd.DataFrame) -> pd.DataFrame:
-    # Gather feature column names.
-    feature_col_ff = [col for col in df.columns if col.startswith("ff_")]
-    feature_col_fp = [col for col in df.columns if re.match("(p|v|ret)_", col)]
-    feature_col_own = [col for col in df.columns if col.startswith("inst_")]
-    feature_col_own += [col for col in df.columns if col.startswith("insider_pos")]
-    feature_col_own += [col for col in df.columns if col.startswith("fund_h")]
-    feature_col_own += [col for col in df.columns if col.startswith("fund_m")]
-    feature_col_own += [col for col in df.columns if col.startswith("insider_order")]
-    feature_col_cat = ["sic", "industry", "sector"]  # Categorical.
-    feature_cols = [
-        feature_col_ff,
-        feature_col_fp,
-        feature_col_own,
-        feature_col_cat,
-    ]
-    feature_cols = sum(feature_cols, [])  # Flatten.
-    logging.info(f"Total number of feature columns: {len(feature_cols)}")
-
-    # Encode categorical features.
-    for col in feature_col_cat:
-        df[col] = df[col].astype("category")
-
-    return df[feature_cols]
-
-
-def _load_csv_dataset(data_uri_pattern: str, target_label: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    fs = gcsfs.GCSFileSystem()
-
-    all_files = fs.glob(data_uri_pattern)
-    df = pd.concat((pd.read_csv('gs://' + f) for f in all_files), ignore_index=True)
-    df = df.sample(frac=1).reset_index(drop=True)
-
-    x, y = _split_features_label_columns(df, target_label)
-    x = _select_features(x)
-
-    return x, y
-
-
-def _evaluate_model(model: Booster, x: pd.DataFrame, y: pd.DataFrame) -> Dict[str, object]:
-    # get roc curve metrics, down sample to avoid hitting MLMD 64k size limit
-    roc_size = int(x.shape[0] * 1 / 3)
-    y_hat = model.predict(x)
-    pred = (y_hat > PROB_THRESHOLD).astype(int)
-
-    fpr, tpr, thresholds = roc_curve(
-        y_true=y[:roc_size], y_score=y_hat[:roc_size], pos_label=True
-    )
-
-    # get classification metrics
-    au_roc = roc_auc_score(y, y_hat)
-    au_prc = average_precision_score(y, y_hat)
-    classification_metrics = classification_report(y, pred, output_dict=True)
-    confusion_mat = confusion_matrix(y, pred, labels=[0, 1])
-
-    metrics = {
-        'classification_report': classification_metrics,
-        'confusion_matrix': confusion_mat.tolist(),
-        'au_roc': au_roc,
-        'au_prc': au_prc,
-        'fpr': fpr.tolist(),
-        'tpr': tpr.tolist(),
-        'thresholds': thresholds.tolist()
-    }
-
-    return metrics
+  return model
 
 
 ################################################################################
 # Hyperparameter tuning using Vertex Vizier.
 ################################################################################
 
+def _get_trial_parameters(trial: aip.Trial,
+                          target_parameters: Iterable[str]
+                          ) -> Dict[str, int]:
+  target_params = set(target_parameters)
+  param_values = {}
 
-def _create_study(vizier_client: aiplatform_v1beta1.VizierServiceClient, args: argparse.Namespace) -> Study:
-    study_display_name = '{}_study_{}'.format(
-        args.hp_config_gcp_project_id.replace('-', ''),
-        datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
-    parent = 'projects/{}/locations/{}'.format(args.hp_config_gcp_project_id, args.hp_config_gcp_region)
+  for param in trial.parameters:
+    if param.parameter_id in target_params:
+      param_values[param.parameter_id] = int(param.value)
 
-    param_num_leaves = {
-        'parameter_id': 'num_leaves',
-        'integer_value_spec': {
-            'min_value': int(args.num_leaves_hp_param_min),
-            'max_value': int(args.num_leaves_hp_param_max)
+  return param_values
+
+
+def _create_lgb_study(vizier_client: aip.VizierServiceClient,
+                      args: argparse.Namespace,
+                      metric: str = 'auc',
+                      goal: str = 'MAXIMIZE') -> aip.Study:
+  study_display_name = '{}_study_{}'.format(
+      args.hp_config_gcp_project_id.replace('-', ''),
+      datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
+  parent = 'projects/{}/locations/{}'.format(args.hp_config_gcp_project_id,
+                                             args.hp_config_gcp_region)
+
+  param_num_leaves = {
+      'parameter_id': 'num_leaves',
+      'integer_value_spec': {
+          'min_value': int(args.num_leaves_hp_param_min),
+          'max_value': int(args.num_leaves_hp_param_max)
+      }
+  }
+
+  param_max_depth = {
+      'parameter_id': 'max_depth',
+      'integer_value_spec': {
+          'min_value': int(args.max_depth_hp_param_min),
+          'max_value': int(args.max_depth_hp_param_max)
+      }
+  }
+
+  # Objective Metric
+  obj_metric = {
+      'metric_id': metric,
+      'goal': goal
+  }
+
+  # Create study using define parameter and metric
+  study_spec = {
+      'display_name': study_display_name,
+      'study_spec': {
+          'parameters': [
+              param_num_leaves,
+              param_max_depth,
+          ],
+          'metrics': [obj_metric],
+      }
+  }
+
+  logging.info(f'Vizier study spec {study_spec}')
+
+  # Create study
+  return vizier_client.create_study(parent=parent, study=study_spec)
+
+
+def conduct_vizier_trials(
+    args: argparse.Namespace,
+    lgb_train: lgb.Dataset,
+    lgb_val: lgb.Dataset,
+    x_test: pd.DataFrame,
+    y_test: pd.DataFrame,
+    target_parameters: Iterable[str] = ('num_leaves', 'max_depth')
+) -> Dict[str, int]:
+  logging.info(f'Commencing Vizier study')
+
+  endpoint = args.hp_config_gcp_region + '-aiplatform.googleapis.com'
+  # Define Vizier client
+  vizier_client = aip.VizierServiceClient(
+      client_options=dict(api_endpoint=endpoint))
+
+  vizier_study = _create_lgb_study(vizier_client, args)
+  vizier_study_id = vizier_study.name
+
+  logging.info(f'Vizier study name: {vizier_study_id}')
+
+  # Conduct training trials using Vizier generated params
+  client_id = "shareholder_training_job"
+  suggestion_count_per_request = int(args.hp_config_suggestions_per_request)
+  max_trial_id_to_stop = int(args.hp_config_max_trials)
+
+  trial_id = 0
+  while int(trial_id) < max_trial_id_to_stop:
+    suggest_response = vizier_client.suggest_trials(
+        {
+            "parent": vizier_study_id,
+            "suggestion_count": suggestion_count_per_request,
+            "client_id": client_id,
         }
-    }
-
-    param_max_depth = {
-        'parameter_id': 'max_depth',
-        'integer_value_spec': {
-            'min_value': int(args.max_depth_hp_param_min),
-            'max_value': int(args.max_depth_hp_param_max)
-        }
-    }
-
-    # Objective Metric
-    metric_auc = {
-        'metric_id': 'auc',
-        'goal': 'MAXIMIZE'
-    }
-
-    # Create study using define parameter and metric
-    study_spec = {
-        'display_name': study_display_name,
-        'study_spec': {
-            'parameters': [
-                param_num_leaves,
-                param_max_depth,
-            ],
-            'metrics': [metric_auc],
-        }
-    }
-
-    logging.info(f'Vizier study spec {study_spec}')
-
-    # Create study
-    return vizier_client.create_study(parent=parent, study=study_spec)
-
-
-def _get_trial_parameters(trial: Trial) -> Tuple[int, int]:
-    num_leaves = None
-    max_depth = None
-
-    for param in trial.parameters:
-        if param.parameter_id == "num_leaves":
-            num_leaves = int(param.value)
-        elif param.parameter_id == "max_depth":
-            max_depth = int(param.value)
-
-    return num_leaves, max_depth
-
-
-def _conduct_vizier_trials(
-        args: argparse.Namespace,
-        lgb_train: lgb.Dataset,
-        lgb_val: lgb.Dataset,
-        x_test: pd.DataFrame,
-        y_test: pd.DataFrame
-) -> Tuple[int, int]:
-    logging.info(f'Commencing Vizier study')
-
-    endpoint = args.hp_config_gcp_region + '-aiplatform.googleapis.com'
-    # Define Vizier client
-    vizier_client = aiplatform_v1beta1.VizierServiceClient(
-        client_options=dict(api_endpoint=endpoint)
     )
 
-    vizier_study = _create_study(vizier_client, args)
-    vizier_study_id = vizier_study.name
+    for suggested_trial in suggest_response.result().trials:
+      trial_id = suggested_trial.name.split("/")[-1]
+      trial = vizier_client.get_trial({"name": suggested_trial.name})
 
-    logging.info(f'Vizier study name: {vizier_study_id}')
+      logging.info(f'Vizier trial start {trial_id}')
 
-    # Conduct training trials using Vizier generated params
-    client_id = "shareholder_training_job"
-    suggestion_count_per_request = int(args.hp_config_suggestions_per_request)
-    max_trial_id_to_stop = int(args.hp_config_max_trials)
+      if trial.state in ["COMPLETED", "INFEASIBLE"]:
+        continue
 
-    trial_id = 0
-    while int(trial_id) < max_trial_id_to_stop:
-        suggest_response = vizier_client.suggest_trials(
-            {
-                "parent": vizier_study_id,
-                "suggestion_count": suggestion_count_per_request,
-                "client_id": client_id,
-            }
-        )
+      param_values = _get_trial_parameters(
+          trial, target_parameters=target_parameters)
 
-        for suggested_trial in suggest_response.result().trials:
-            trial_id = suggested_trial.name.split("/")[-1]
-            trial = vizier_client.get_trial({"name": suggested_trial.name})
+      model = lgb_training(
+          lgb_train, lgb_val,
+          num_boost_round=int(args.num_boost_round),
+          min_data_in_leaf=int(args.min_data_in_leaf),
+          **param_values)
 
-            logging.info(f'Vizier trial start {trial_id}')
+      # Get model evaluation metrics
+      metrics = _evaluate_binary_classification(model, x_test, y_test)
 
-            if trial.state in ["COMPLETED", "INFEASIBLE"]:
-                continue
+      # Log measurements back to vizier
+      vizier_client.add_trial_measurement(
+          {
+              "trial_name": suggested_trial.name,
+              "measurement": {
+                  'metrics': [{'metric_id': 'auc', 'value': metrics['au_roc']}]
+              },
+          }
+      )
 
-            num_leaves, max_depth = _get_trial_parameters(trial)
+      # Complete the Vizier trial
+      vizier_client.complete_trial(
+          {"name": suggested_trial.name, "trial_infeasible": False}
+      )
 
-            model = _training_execution(
-                lgb_train, lgb_val, int(args.num_boost_round), num_leaves, max_depth, int(args.min_data_in_leaf)
-            )
+      logging.info(f'Vizier trial completed {trial_id}')
 
-            # Get model evaluation metrics
-            metrics = _evaluate_model(model, x_test, y_test)
+  # Get the optimal trail with the best ROC AUC
+  optimal_trials = vizier_client.list_optimal_trials(
+      {"parent": vizier_study_id})
 
-            # Log measurements back to vizier
-            vizier_client.add_trial_measurement(
-                {
-                    "trial_name": suggested_trial.name,
-                    "measurement": {
-                        'metrics': [{'metric_id': 'auc', 'value': metrics['au_roc']}]
-                    },
-                }
-            )
+  # Extract best hyperparams from best trial
+  best_param_values = _get_trial_parameters(
+      optimal_trials.optimal_trials[0],
+      target_parameters=target_parameters)
 
-            # Complete the Vizier trial
-            vizier_client.complete_trial(
-                {"name": suggested_trial.name, "trial_infeasible": False}
-            )
+  return best_param_values
 
-            logging.info(f'Vizier trial completed {trial_id}')
 
-    # Get the optimal trail with the best ROC AUC
-    optimal_trials = vizier_client.list_optimal_trials({"parent": vizier_study_id})
+################################################################################
+# Main Logic.
+################################################################################
 
-    # Extract best hyperparams from best trial
-    best_num_leaves, best_max_depth = _get_trial_parameters(optimal_trials.optimal_trials[0])
+def train(args: argparse.Namespace):
+  if 'AIP_MODEL_DIR' not in os.environ:
+    raise KeyError(
+        'The `AIP_MODEL_DIR` environment variable has not been set. '
+        'See https://cloud.google.com/ai-platform-unified/docs/tutorials/image-recognition-custom/training'
+    )
+  output_model_directory = os.environ['AIP_MODEL_DIR']
 
-    return best_num_leaves, best_max_depth
+  logging.info(f'AIP_MODEL_DIR: {output_model_directory}')
+  logging.info(f'training_data_uri: {args.training_data_uri}')
+  logging.info(f'metrics_output_uri: {args.metrics_output_uri}')
+
+  # prepare the data
+  x_train, y_train = load_csv_dataset(
+      data_uri_pattern=args.training_data_uri,
+      data_schema=args.training_data_schema,
+      target_label=args.label,
+      features=args.features)
+
+  # validation data
+  x_train, x_val, y_train, y_val = model_selection.train_test_split(
+      x_train,
+      y_train,
+      test_size=0.2,
+      random_state=np.random.RandomState(42))
+
+  # test data
+  x_val, x_test, y_val, y_test = model_selection.train_test_split(
+      x_val,
+      y_val,
+      test_size=0.5,
+      random_state=np.random.RandomState(42))
+
+  lgb_train = lgb.Dataset(x_train, y_train, categorical_feature="auto")
+  lgb_val = lgb.Dataset(x_val, y_val, categorical_feature="auto")
+
+  if args.perform_hp:
+    # Conduct Vizier trials a.k.a. hyperparameter tuning
+    # prior to main training activity
+    best_param_values = conduct_vizier_trials(
+        args=args,
+        lgb_train=lgb_train,
+        lgb_val=lgb_val,
+        x_test=x_test,
+        y_test=y_test)
+    logging.info(f'Vizier returned params: {best_param_values}')
+  else:
+    best_param_values = {
+        'num_leaves': (args.num_leaves_hp_param_min +
+                       args.num_leaves_hp_param_max) // 2,
+        'max_depth': (args.max_depth_hp_param_min +
+                      args.max_depth_hp_param_max) // 2
+    }
+
+  model = lgb_training(
+      lgb_train=lgb_train,
+      lgb_val=lgb_val,
+      num_boost_round=int(args.num_boost_round),
+      min_data_in_leaf=int(args.min_data_in_leaf),
+      **best_param_values)
+
+  # save the generated model
+  _save_lgb_model(model, output_model_directory)
+  _save_lgb_feature_importance(model, output_model_directory)
+  _save_analysis_schema(x_train, output_model_directory)
+
+  # save eval metrics
+  metrics = _evaluate_binary_classification(model, x_test, y_test)
+  if args.metrics_output_uri:
+    _save_metrics(metrics, args.metrics_output_uri)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--training_data_uri', type=str,
-                        help='The training dataset location in GCS.')
-    parser.add_argument('--target_label', type=str,
-                        help='The target feature name in the dataset.')
-    parser.add_argument('--metrics_output_uri', type=str,
-                        help='The GCS artifact URI to write model metrics.')
-    parser.add_argument('--min_data_in_leaf', dest='min_data_in_leaf',
-                        default=5, type=float,
-                        help='Minimum number of observations that must fall into a tree node for it to be added.')
-    parser.add_argument('--num_boost_round', dest='num_boost_round',
-                        default=300, type=float,
-                        help='Number of boosting iterations.')
-    parser.add_argument('--max_depth_hp_param_min', dest='max_depth_hp_param_min',
-                        default=-1, type=float,
-                        help='Max tree depth for base learners, <=0 means no limit. Min value for hyperparam param')
-    parser.add_argument('--max_depth_hp_param_max', dest='max_depth_hp_param_max',
-                        default=3, type=float,
-                        help='Max tree depth for base learners, <=0 means no limit.  Max value for hyperparam param')
-    parser.add_argument('--num_leaves_hp_param_min', dest='num_leaves_hp_param_min',
-                        default=6, type=float,
-                        help='Maximum tree leaves for base learners. Min value for hyperparam param.')
-    parser.add_argument('--num_leaves_hp_param_max', dest='num_leaves_hp_param_max',
-                        default=10, type=float,
-                        help='Maximum tree leaves for base learners. Max value for hyperparam param.')
-    parser.add_argument('--hp_config_max_trials', dest='hp_config_max_trials',
-                        default=20, type=float,
-                        help='Maximum number of hyperparam tuning trials.')
-    parser.add_argument('--hp_config_suggestions_per_request', dest='hp_config_suggestions_per_request',
-                        default=5, type=float,
-                        help='Suggestions per vizier request')
-    parser.add_argument('--hp_config_gcp_region', dest='hp_config_gcp_region',
-                        default='asia-east1', type=str,
-                        help='Vizier GCP Region. Data or model no passed to vizier. Simply tuning config.')
-    parser.add_argument('--hp_config_gcp_project_id', dest='hp_config_gcp_project_id',
-                        default='uob-ml-deployment', type=str,
-                        help='GCP project id.')
-    train(parser.parse_args())
+  parser = argparse.ArgumentParser()
+  # For training data
+  parser.add_argument('--training_data_uri', type=str,
+                      help='The training dataset location in GCS.')
+  parser.add_argument('--training_data_schema', type=str, default='',
+                      help='The schema of the training dataset. The'
+                           'example schema: name:type;')
+  parser.add_argument('--features', type=str, default='',
+                      help='The column names of features to be used.')
+  parser.add_argument('--label', type=str, default='',
+                      help='The column name of label in the dataset.')
+
+  parser.add_argument('--metrics_output_uri', type=str,
+                      help='The GCS artifact URI to write model metrics.')
+  # For model hyperparameter
+  parser.add_argument('--min_data_in_leaf', default=5, type=int,
+                      help='Minimum number of observations that must '
+                           'fall into a tree node for it to be added.')
+  parser.add_argument('--num_boost_round', default=300, type=int,
+                      help='Number of boosting iterations.')
+  parser.add_argument('--max_depth_hp_param_min', default=-1, type=int,
+                      help='Max tree depth for base learners, <=0 means no '
+                           'limit. Min value for hyperparam param')
+  parser.add_argument('--max_depth_hp_param_max', default=3, type=int,
+                      help='Max tree depth for base learners, <=0 means no '
+                           'limit.  Max value for hyperparam param')
+  parser.add_argument('--num_leaves_hp_param_min', default=6, type=int,
+                      help='Maximum tree leaves for base learners. '
+                           'Min value for hyperparam param.')
+  parser.add_argument('--num_leaves_hp_param_max', default=10, type=int,
+                      help='Maximum tree leaves for base learners. '
+                           'Max value for hyperparam param.')
+  # For hyperparameter tuning with Vizer
+  parser.add_argument('--perform_hp', default=False, type=bool,
+                      help='Specify whether to perform hyperparameter tuning.')
+  parser.add_argument('--hp_config_max_trials', default=20, type=int,
+                      help='Maximum number of hyperparam tuning trials.')
+  parser.add_argument('--hp_config_suggestions_per_request',
+                      default=5, type=int,
+                      help='Suggestions per vizier request')
+  parser.add_argument('--hp_config_gcp_region', default='asia-east1', type=str,
+                      help='Vizier GCP Region. Data or model no passed to '
+                           'vizier. Simply tuning config.')
+  parser.add_argument('--hp_config_gcp_project_id',
+                      default='woven-rush-197905', type=str,
+                      help='GCP project id.')
+
+  logging.info(parser.parse_args())
+  train(parser.parse_args())
