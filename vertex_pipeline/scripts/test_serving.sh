@@ -22,19 +22,6 @@ echo "PYTHONPATH="${PYTHONPATH}
 
 PROJECT_ID=$(gcloud config get-value project)
 
-DATA_SCHEMA='VWT:float;SWT:float;KWT:float;Entropy:float;Class:int'
+export TRAINING_DATA_SCHEMA='VWT:float;SWT:float;KWT:float;Entropy:float;Class:int'
 
-python -m images.training.app \
-  --training_data_uri=gs://mldataset-fantasy/banknote_authentication.csv \
-  --training_data_schema=$DATA_SCHEMA\
-  --label=Class \
-  --hp_config_gcp_project_id="${PROJECT_ID}" \
-  --hp_config_gcp_region=asia-east1, \
-  --hp_config_suggestions_per_request=5 \
-  --hp_config_max_trials=20 \
-  --num_leaves_hp_param_min=6 \
-  --num_leaves_hp_param_max=11 \
-  --max_depth_hp_param_min=-1 \
-  --max_depth_hp_param_max=4 \
-  --num_boost_round=300 \
-  --min_data_in_leaf=5
+python -m images.serving.app

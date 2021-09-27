@@ -29,6 +29,9 @@ logging.getLogger().setLevel(logging.INFO)
 ################################################################################
 
 MODEL_FILENAME = 'model.txt'
+# Need to set env parameter through
+# serving_container_environment_variables={'TRAINING_DATA_SCHEMA': data_schema},
+DATA_SCHEMA = os.environ['TRAINING_DATA_SCHEMA']
 
 
 def load_model(model_store):
@@ -62,7 +65,8 @@ def predict():
     For direct API calls through request
     """
     data = request.get_json(force=True)
-    logging.info(f'prediction: received requests containing {len(data["instances"])} records')
+    logging.info(f'prediction: received requests containing '
+                 f'{len(data["instances"])} records')
 
     df = pd.json_normalize(data['instances'])
 
@@ -70,9 +74,9 @@ def predict():
     df = df.fillna(value=np.nan)
 
     # Encode categorical features.
-    feature_col_cat = ["sic", "industry", "sector"]
-    for col in feature_col_cat:
-        df[col] = df[col].astype("category")
+    fields = dict(field.split(':') for field in DATA_SCHEMA.split(';'))
+    for col in fields.keys()[:-1]:
+        df[col] = df[col].astype(fields[col])
 
     predictions = model.predict(df)
 
