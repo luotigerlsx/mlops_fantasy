@@ -53,8 +53,8 @@ def create_training_pipeline(project_id: str,
                                   af_registry_name=af_registry_name,
                                   components_dir=components_dir)
 
-  preprocess_op = load_custom_component('data_preprocess')
-  batch_prediction_op = load_custom_component('batch_prediction')
+  preprocess_op = load_custom_component(component_name='data_preprocess')
+  batch_prediction_op = load_custom_component(component_name='batch_prediction')
 
   @dsl.pipeline(name=pipeline_name)
   def pipeline(project_id: str,

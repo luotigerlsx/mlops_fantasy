@@ -17,7 +17,7 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: 'bash'
     args: [ "-c", "docker build -t ${_AF_REGISTRY_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AF_REGISTRY_NAME}/batch-prediction:$TAG_NAME --build-arg PROJECT_ID=$PROJECT_ID --build-arg _AF_REGISTRY_LOCATION=${_AF_REGISTRY_LOCATION} --build-arg _AF_REGISTRY_NAME=${_AF_REGISTRY_NAME} --cache-from ${_AF_REGISTRY_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AF_REGISTRY_NAME}/component-base ." ]
-    dir: 'components/batch-prediction'
+    dir: 'components/batch_prediction'
     id: 'Build component: batch-prediction'
 
   - name: "gcr.io/cloud-builders/docker"

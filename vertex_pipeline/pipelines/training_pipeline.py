@@ -52,12 +52,12 @@ def create_training_pipeline(project_id: str,
                                   af_registry_name=af_registry_name,
                                   components_dir=components_dir)
 
-  preprocess_op = load_custom_component('data_preprocess')
-  train_op = load_custom_component('train_model')
-  check_metrics_op = load_custom_component('check_model_metrics')
-  create_endpoint_op = load_custom_component('create_endpoint')
-  deploy_model_op = load_custom_component('deploy_model')
-  monitor_model_op = load_custom_component('monitor_model')
+  preprocess_op = load_custom_component(component_name='data_preprocess')
+  train_op = load_custom_component(component_name='train_model')
+  check_metrics_op = load_custom_component(component_name='check_model_metrics')
+  create_endpoint_op = load_custom_component(component_name='create_endpoint')
+  deploy_model_op = load_custom_component(component_name='deploy_model')
+  monitor_model_op = load_custom_component(component_name='monitor_model')
 
   @dsl.pipeline(name=pipeline_name)
   def pipeline(project_id: str,
