@@ -22,12 +22,10 @@ export TAG_NAME=latest
 AF_REGISTRY_LOCATION=asia-southeast1
 AF_REGISTRY_NAME=mlops-vertex-kit
 
-IMAGE_SRC=../images
-
 SUBSTITUTIONS=\
 TAG_NAME=$TAG_NAME,\
 _AF_REGISTRY_LOCATION=$AF_REGISTRY_LOCATION,\
 _AF_REGISTRY_NAME=$AF_REGISTRY_NAME
 
 # To use regional Cloud Build, add '--region=$REGION'. However, the project need to be added to allowlist
-gcloud builds submit $IMAGE_SRC --config $IMAGE_SRC/cloudbuild_images.yaml --substitutions ${SUBSTITUTIONS}
+gcloud builds submit .. --config ../images/cloudbuild_images.yaml --substitutions ${SUBSTITUTIONS}

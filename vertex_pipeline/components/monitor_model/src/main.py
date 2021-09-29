@@ -26,8 +26,8 @@ from google.cloud.aiplatform_v1beta1 import GcsSource, JobServiceClient, \
   ModelMonitoringAlertConfig, ModelMonitoringObjectiveConfig, SamplingStrategy, \
   ThresholdConfig
 from google.protobuf.duration_pb2 import Duration
-from kfp.components.executor import Executor
-from kfp.dsl.io_types import Artifact, Dataset, Input
+from kfp.v2.components.executor import Executor
+from kfp.v2.dsl import Artifact, Dataset, Input
 
 # Vertex AI artifact resource prefix
 VERTEX_AI_RESOURCE_PREFIX = 'aiplatform://v1/'

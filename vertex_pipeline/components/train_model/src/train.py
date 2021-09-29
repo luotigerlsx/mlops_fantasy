@@ -17,8 +17,8 @@ import logging
 import os
 from datetime import datetime
 
-from kfp.components.executor import Executor
-from kfp.dsl.io_types import Artifact, ClassificationMetrics, Dataset, Input, Metrics, Model, Output
+from kfp.v2.components.executor import Executor
+from kfp.v2.dsl import Artifact, ClassificationMetrics, Dataset, Input, Metrics, Model, Output
 
 FEATURE_IMPORTANCE_FILENAME = 'feature_importance.csv'
 
@@ -39,6 +39,9 @@ def train_model(
     classification_metrics: Output[ClassificationMetrics],
     feature_importance_dataset: Output[Dataset],
     instance_schema: Output[Artifact],
+    machine_type: str = "n1-standard-8",
+    accelerator_count: int = 0,
+    accelerator_type: str = 'ACCELERATOR_TYPE_UNSPECIFIED',
     hptune_region: str = None,
     vpc_network: str = None,
 ):
@@ -63,6 +66,11 @@ def train_model(
       feature_importance_dataset: The output artifact of the feature
           importance CSV file.
       instance_schema: The output artifact of the schema of the features.
+      machine_type: The machine type to serve the prediction requests.
+      accelerator_type: The type of accelerator(s) that may be attached
+        to the machine as per `accelerator_count`.
+      accelerator_count: The number of accelerators to attach to the
+        `machine_type`.
       hptune_region: The region for hyperparameter tuning job.
       vpc_network: The VPC network to execute the training job (optional).
   """
@@ -89,8 +97,7 @@ def train_model(
     model_serving_container_predict_route='/predict',
     model_serving_container_health_route='/health',
     model_serving_container_environment_variables={'TRAINING_DATA_SCHEMA':
-                                                     input_data_schema}
-  )
+                                                     input_data_schema})
 
   # Create a millisecond timestamped model display name
   model_display_name = f'model-{int(datetime.now().timestamp() * 1000)}'
@@ -127,10 +134,11 @@ def train_model(
     model_display_name=model_display_name,
     args=train_args,
     replica_count=1,
-    machine_type='n1-standard-4',
+    machine_type=machine_type,
+    accelerator_type=accelerator_type,
+    accelerator_count=accelerator_count,
     service_account=custom_job_service_account,
-    network=vpc_network
-  )
+    network=vpc_network)
 
   logging.info(
     f'Training completes with model URI: {model.uri}, '

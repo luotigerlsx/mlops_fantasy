@@ -15,8 +15,8 @@
 import logging
 from typing import NamedTuple
 
-from kfp.components.executor import Executor
-from kfp.dsl.io_types import Input, Metrics
+from kfp.v2.components.executor import Executor
+from kfp.v2.dsl import Input, Metrics
 
 logging.getLogger().setLevel(logging.INFO)
 

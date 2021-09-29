@@ -1,4 +1,4 @@
-kfp==1.6.3
+kfp==1.8.2
 lightgbm==3.2.1
 gcsfs==2021.6.1
 pandas==1.1.5

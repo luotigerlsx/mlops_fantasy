@@ -15,8 +15,8 @@
 import logging
 
 from google.cloud import aiplatform
-from kfp.components.executor import Executor
-from kfp.dsl.io_types import Artifact, Input, Model
+from kfp.v2.components.executor import Executor
+from kfp.v2.dsl import Artifact, Input, Model
 
 # Vertex AI artifact resource prefix
 VERTEX_AI_RESOURCE_PREFIX = 'aiplatform://v1/'

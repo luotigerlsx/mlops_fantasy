@@ -23,6 +23,9 @@ inputs:
 - {name: serving_container_image_uri, type: String}
 - {name: custom_job_service_account, type: String}
 - {name: input_dataset, type: Dataset}
+- {name: machine_type, type: String}
+- {name: accelerator_type, type: String}
+- {name: accelerator_count, type: Integer}
 - {name: vpc_network, type: String, optional: true}
 outputs:
 - {name: output_model, type: Model}
@@ -44,6 +47,9 @@ implementation:
       --training-container-image-uri-output-path, {inputValue: training_container_image_uri},
       --serving-container-image-uri-output-path, {inputValue: serving_container_image_uri},
       --custom-job-service-account-output-path, {inputValue: custom_job_service_account},
+      --machine-type-output-path, {inputValue: machine_type},
+      --accelerator-type-output-path, {inputValue: accelerator_type},
+      --accelerator-count-output-path, {inputValue: accelerator_count},
       --input-dataset-output-path, {inputPath: input_dataset},
       --input_data_schema-output-path, {inputValue: input_data_schema},
       --output-model-output-path, {outputPath: output_model},

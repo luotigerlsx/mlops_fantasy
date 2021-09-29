@@ -23,7 +23,7 @@ outputs:
 - {name: endpoint, type: Artifact}
 implementation:
   container:
-    image: asia-southeast1-docker.pkg.dev/{{project_id}}/mlops-repo/create-endpoint:latest
+    image: {{af_registry_location}}-docker.pkg.dev/{{project_id}}/{{af_registry_name}}/create-endpoint:latest
     command: [python, /pipelines/component/src/endpoint.py]
     args: [
       --executor_input, {executorInput: null},

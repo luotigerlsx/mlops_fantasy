@@ -18,7 +18,7 @@ steps:
   # build the base images
   - name: 'gcr.io/cloud-builders/docker'
     args: [ "build", "-t", "${_AF_REGISTRY_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AF_REGISTRY_NAME}/component-base:$TAG_NAME", "." ]
-    dir: 'component_base'
+    dir: 'images/component_base'
     id: 'Build image: component base'
 
   # it's important to push the base image because all subsequent steps are layers ontop of it; if this is not done the first
@@ -29,12 +29,12 @@ steps:
 
   - name: 'gcr.io/cloud-builders/docker'
     args: [ "build", "-t", "${_AF_REGISTRY_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AF_REGISTRY_NAME}/training:$TAG_NAME", "." ]
-    dir: 'training'
+    dir: 'images/training'
     id: 'Build image: training'
 
   - name: 'gcr.io/cloud-builders/docker'
     args: [ "build", "-t", "${_AF_REGISTRY_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AF_REGISTRY_NAME}/serving:$TAG_NAME", "." ]
-    dir: 'serving'
+    dir: 'images/serving'
     id: 'Build image: serving'
 
 images:

@@ -18,8 +18,8 @@ from datetime import datetime
 from typing import Tuple
 
 from google.cloud import bigquery
-from kfp.components.executor import Executor
-from kfp.dsl.io_types import Dataset, Input, Output
+from kfp.v2.components.executor import Executor
+from kfp.v2.dsl import Dataset, Input, Output
 
 
 def _bq_uri_to_fields(uri: str) -> Tuple[str, str, str]:
@@ -33,7 +33,8 @@ def preprocess_data(
     data_region: str,
     gcs_output_folder: str,
     input_dataset: Input[Dataset],
-    output_dataset: Output[Dataset]
+    output_dataset: Output[Dataset],
+    gcs_output_format: str = bigquery.DestinationFormat.NEWLINE_DELIMITED_JSON
 ):
   """ Extract a BQ table to an output Dataset artifact.
 
@@ -43,6 +44,7 @@ def preprocess_data(
       gcs_output_folder: The GCS location to store the resulting CSV file.
       input_dataset: The output artifact of the resulting dataset.
       output_dataset: The output artifact of the resulting dataset.
+      gcs_output_format: The output format.
   """
 
   logging.getLogger().setLevel(logging.INFO)
@@ -65,13 +67,15 @@ def preprocess_data(
 
   # In future, more preprocessing logics can be put here
   # Currently it only exports the table directly to GCS
-  job_config = bigquery.job.ExtractJobConfig(print_header=False)
+  job_config = bigquery.job.ExtractJobConfig()
+  job_config.destination_format = gcs_output_format
+  job_config.print_header = False
+
   extract_job = client.extract_table(
     table_ref,
     destination_uri,
     location=data_region,
-    job_config=job_config,
-  )
+    job_config=job_config)
   extract_job.result()  # Waits for job to complete.
   logging.info('Table export completed')
 

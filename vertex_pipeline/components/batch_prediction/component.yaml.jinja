@@ -12,30 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Deploy Model
+name: Batch Prediction
 inputs:
 - {name: project_id, type: String}
 - {name: data_region, type: String}
 - {name: data_pipeline_root, type: String}
+- {name: gcs_result_folder, type: String}
+- {name: instances_format, type: String}
+- {name: predictions_format, type: String}
+- {name: model_resource_name, type: String}
+- {name: endpoint_resource_name, type: String}
 - {name: machine_type, type: String}
-- {name: min_replica_count, type: Integer}
+- {name: accelerator_type, type: String}
+- {name: accelerator_count, type: Integer}
 - {name: max_replica_count, type: Integer}
-- {name: model, type: Model}
-- {name: endpoint, type: Artifact}
+- {name: starting_replica_count, type: Integer}
+- {name: input_dataset, type: Dataset}
 outputs:
+- {name: prediction_result, type: Dataset}
 implementation:
   container:
     image: {{af_registry_location}}-docker.pkg.dev/{{project_id}}/{{af_registry_name}}/deploy-model:latest
-    command: [python, /pipelines/component/src/deploy.py]
+    command: [python, /pipelines/component/src/predict.py]
     args: [
       --executor_input, {executorInput: null},
-      --function_to_execute, deploy_model,
+      --function_to_execute, batch_prediction,
       --project-id-output-path, {inputValue: project_id},
       --data-region-output-path, {inputValue: data_region},
       --data-pipeline-root-output-path, {inputValue: data_pipeline_root},
+      --gcs-result-folder-output-path, {inputValue: gcs_result_folder},
+      --instances-format-output-path, {inputValue: instances_format},
+      --predictions-format-output-path, {inputValue: predictions_format},
+      --model-resource-name-output-path, {inputValue: model_resource_name},
+      --endpoint-resource-name-output-path, {inputValue: endpoint_resource_name},
       --machine-type-output-path, {inputValue: machine_type},
-      --min-replica-count-output-path, {inputValue: min_replica_count},
+      --accelerator-type-output-path, {inputValue: accelerator_type},
+      --accelerator-count-output-path, {inputValue: accelerator_count},
+      --starting-replica-count-count-output-path, {inputValue: starting_replica_count},
       --max-replica-count-output-path, {inputValue: max_replica_count},
-      --model-output-path, {inputPath: model},
-      --endpoint-output-path, {inputPath: endpoint}
+      --input-dataset-output-path, {inputPath: input_dataset},
+      --prediction-result-output-path, {outputPath: prediction_result}
     ]
