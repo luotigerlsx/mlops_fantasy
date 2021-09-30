@@ -56,6 +56,7 @@ def create_training_pipeline(project_id: str,
   train_op = load_custom_component(component_name='train_model')
   check_metrics_op = load_custom_component(component_name='check_model_metrics')
   create_endpoint_op = load_custom_component(component_name='create_endpoint')
+  test_endpoint_op = load_custom_component(component_name='test_endpoint')
   deploy_model_op = load_custom_component(component_name='deploy_model')
   monitor_model_op = load_custom_component(component_name='monitor_model')
 
@@ -75,6 +76,7 @@ def create_training_pipeline(project_id: str,
                endpoint_machine_type: str,
                endpoint_min_replica_count: int,
                endpoint_max_replica_count: int,
+               endpoint_test_instances: str,
                monitoring_user_emails: str,
                monitoring_log_sample_rate: float,
                monitor_interval: int,
@@ -135,6 +137,14 @@ def create_training_pipeline(project_id: str,
         max_replica_count=endpoint_max_replica_count,
         model=train_task.outputs['output_model'],
         endpoint=create_endpoint_task.outputs['endpoint'])
+
+      test_endpoint_task = test_endpoint_op(
+        project_id=project_id,
+        data_region=data_region,
+        data_pipeline_root=data_pipeline_root,
+        endpoint=create_endpoint_task.outputs['endpoint'],
+        test_instances=endpoint_test_instances,
+      ).after(deploy_model_task)
 
       with dsl.Condition(enable_model_monitoring == 'True', name='Monitoring'):
         monitor_model_task = monitor_model_op(
