@@ -107,7 +107,7 @@ def train_model(
   # Also provide the metrics artifact URI for the metrics output
   fields = [field.split(':')[0] for field in input_data_schema.split(';')]
   label = fields[-1]
-  features = fields[0:-1]
+  features = ','.join(fields[0:-1])
 
   train_args = [
     '--training_data_uri', input_dataset.uri,
@@ -128,7 +128,7 @@ def train_model(
   ]
 
   if hptune_region:
-    train_args.append('--perform_hp')
+    train_args.append('--perform_hp',)
 
   model = job.run(
     model_display_name=model_display_name,
