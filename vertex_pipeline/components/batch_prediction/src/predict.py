@@ -126,7 +126,7 @@ def batch_prediction(
   if batch_prediction_job.state == job_state_v1.JobState.JOB_STATE_SUCCEEDED:
     logging.info(f'batch prediction job has finished with info: '
                  f'{batch_prediction_job.completion_stats}')
-    prediction_result.uri = gcs_result_folder
+    prediction_result.uri = batch_prediction_job.output_info.gcs_output_directory
   else:
     raise RuntimeError(batch_prediction_job.error)
 
