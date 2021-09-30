@@ -455,7 +455,7 @@ if __name__ == '__main__':
                       help='Maximum tree leaves for base learners. '
                            'Max value for hyperparam param.')
   # For hyperparameter tuning with Vizer
-  parser.add_argument('--perform_hp', default=False, type=bool,
+  parser.add_argument('--perform_hp', action='store_true', default=False,
                       help='Specify whether to perform hyperparameter tuning.')
   parser.add_argument('--hp_config_max_trials', default=20, type=float,
                       help='Maximum number of hyperparam tuning trials.')
