@@ -397,9 +397,9 @@ def train(args: argparse.Namespace):
     logging.info(f'Vizier returned params: {best_param_values}')
   else:
     best_param_values = {
-        'num_leaves': (args.num_leaves_hp_param_min +
+        'num_leaves': int(args.num_leaves_hp_param_min +
                        args.num_leaves_hp_param_max) // 2,
-        'max_depth': (args.max_depth_hp_param_min +
+        'max_depth': int(args.max_depth_hp_param_min +
                       args.max_depth_hp_param_max) // 2
     }
 
@@ -437,30 +437,30 @@ if __name__ == '__main__':
   parser.add_argument('--metrics_output_uri', type=str,
                       help='The GCS artifact URI to write model metrics.')
   # For model hyperparameter
-  parser.add_argument('--min_data_in_leaf', default=5, type=int,
+  parser.add_argument('--min_data_in_leaf', default=5, type=float,
                       help='Minimum number of observations that must '
                            'fall into a tree node for it to be added.')
-  parser.add_argument('--num_boost_round', default=300, type=int,
+  parser.add_argument('--num_boost_round', default=300, type=float,
                       help='Number of boosting iterations.')
-  parser.add_argument('--max_depth_hp_param_min', default=-1, type=int,
+  parser.add_argument('--max_depth_hp_param_min', default=-1, type=float,
                       help='Max tree depth for base learners, <=0 means no '
                            'limit. Min value for hyperparam param')
-  parser.add_argument('--max_depth_hp_param_max', default=3, type=int,
+  parser.add_argument('--max_depth_hp_param_max', default=3, type=float,
                       help='Max tree depth for base learners, <=0 means no '
                            'limit.  Max value for hyperparam param')
-  parser.add_argument('--num_leaves_hp_param_min', default=6, type=int,
+  parser.add_argument('--num_leaves_hp_param_min', default=6, type=float,
                       help='Maximum tree leaves for base learners. '
                            'Min value for hyperparam param.')
-  parser.add_argument('--num_leaves_hp_param_max', default=10, type=int,
+  parser.add_argument('--num_leaves_hp_param_max', default=10, type=float,
                       help='Maximum tree leaves for base learners. '
                            'Max value for hyperparam param.')
   # For hyperparameter tuning with Vizer
   parser.add_argument('--perform_hp', default=False, type=bool,
                       help='Specify whether to perform hyperparameter tuning.')
-  parser.add_argument('--hp_config_max_trials', default=20, type=int,
+  parser.add_argument('--hp_config_max_trials', default=20, type=float,
                       help='Maximum number of hyperparam tuning trials.')
   parser.add_argument('--hp_config_suggestions_per_request',
-                      default=5, type=int,
+                      default=5, type=float,
                       help='Suggestions per vizier request')
   parser.add_argument('--hp_config_gcp_region', default='asia-east1', type=str,
                       help='Vizier GCP Region. Data or model no passed to '
