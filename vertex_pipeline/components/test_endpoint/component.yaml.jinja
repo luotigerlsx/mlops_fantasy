@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Create Endpoint
+name: Test Endpoint
 inputs:
 - {name: project_id, type: String}
 - {name: data_region, type: String}
@@ -25,7 +25,7 @@ implementation:
     command: [python, /pipelines/component/src/test_endpoint.py]
     args: [
       --executor_input, {executorInput: null},
-      --function_to_execute, get_or_create_endpoint,
+      --function_to_execute, test_endpoint,
       --project-id-output-path, {inputValue: project_id},
       --data-region-output-path, {inputValue: data_region},
       --data-pipeline-root-output-path, {inputValue: data_pipeline_root},

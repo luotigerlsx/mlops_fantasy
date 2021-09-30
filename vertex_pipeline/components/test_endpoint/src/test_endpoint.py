@@ -29,7 +29,7 @@ def test_endpoint(
     test_instances: str,
     endpoint: Input[Artifact]
 ):
-  """ Get an existing model endpoint, or create a new one.
+  """ Test an endpoint.
 
   Args:
       project_id: The project ID.
