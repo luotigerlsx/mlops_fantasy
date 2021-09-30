@@ -151,7 +151,7 @@ def train_model(
   feature_importance_dataset.uri = os.path.join(
     model.uri, FEATURE_IMPORTANCE_FILENAME)
   instance_schema.uri = os.path.join(model.uri, INSTANCE_SCHEMA_FILENAME)
-  instance_schema.label = label
+  instance_schema.metadata['label'] = label
 
   # Read confusion matrix returned by the custom job
   with open(basic_metrics.path, 'rt') as f:

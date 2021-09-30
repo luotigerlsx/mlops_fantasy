@@ -85,7 +85,7 @@ def monitor_model(
   objective_configs = _create_objectives_config(
     endpoint=target_endpoint,
     instance_schema_path=instance_schema.path,
-    label=instance_schema.label,
+    label=instance_schema.metadata['label'],
     training_dataset_uri=dataset.uri,
     default_threshold=default_threshold,
     custom_skew_thresholds=custom_skew_thresholds,
