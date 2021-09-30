@@ -59,7 +59,7 @@ def _save_lgb_feature_importance(model: lgb.Booster, model_store: str):
 
 
 def _save_metrics(metrics: dict, output_path: str):
-  with tf.io.gfile.GFile(output_path, 'wt') as eval_file:
+  with tf.io.gfile.GFile(output_path, 'w') as eval_file:
     eval_file.write(json.dumps(metrics))
 
 
