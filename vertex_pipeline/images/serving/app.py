@@ -83,11 +83,16 @@ def predict():
 
   predictions = model.predict(df)
 
-  output = {
-    'confidences': [(y, 1 - y) for y in predictions.tolist()],
+  output = [{
+    'confidences': [y, 1 - y],
     'displayNames': ['1', '0']
+  } for y in predictions.tolist()]
+
+  response_dict = {
+    'predictions': output
   }
-  return flask.make_response(flask.jsonify(output), 200)
+
+  return flask.make_response(flask.jsonify(response_dict), 200)
 
 
 @app.route('/health', methods=['GET', 'POST'])
