@@ -28,8 +28,9 @@ python -m images.training.app \
   --training_data_uri=gs://mldataset-fantasy/banknote_authentication.csv \
   --training_data_schema=$DATA_SCHEMA\
   --label=Class \
+  --perform_hp \
   --hp_config_gcp_project_id="${PROJECT_ID}" \
-  --hp_config_gcp_region=asia-east1, \
+  --hp_config_gcp_region=asia-east1 \
   --hp_config_suggestions_per_request=5 \
   --hp_config_max_trials=20 \
   --num_leaves_hp_param_min=6 \
