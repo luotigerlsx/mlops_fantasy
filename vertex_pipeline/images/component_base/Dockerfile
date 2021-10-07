@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM python:3.7-slim
+FROM gcr.io/deeplearning-platform-release/base-cpu
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	wget patch \
@@ -22,4 +22,6 @@ COPY requirements.txt .
 
 RUN python3 -m pip install -r \
     requirements.txt --quiet --no-cache-dir \
-    && rm -f requirements.txt
+    && rm -f requirements.txt \
+
+ENTRYPOINT ["/bin/bash"]

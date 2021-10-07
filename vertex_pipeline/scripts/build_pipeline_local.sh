@@ -20,6 +20,7 @@ SRC_DIR=${DIR}"/../"
 export PYTHONPATH=${PYTHONPATH}:${SRC_DIR}
 echo "PYTHONPATH="${PYTHONPATH}
 
+rm -r pipeline_spec
 mkdir pipeline_spec
 
 python -m pipelines.training_pipeline --config ../configs/defaults.yaml
