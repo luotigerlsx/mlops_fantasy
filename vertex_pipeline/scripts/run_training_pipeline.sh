@@ -21,6 +21,7 @@ AF_REGISTRY_NAME=mlops-vertex-kit
 
 DATA_SCHEMA='VWT:float;SWT:float;KWT:float;Entropy:float;Class:int'
 TEST_INSTANCE='[{"VWT": 3.6216, "SWT": 8.6661, "KWT": -2.8073, "Entropy": -0.44699, "Class": "0"}]'
+TRAIN_ARGS='{"num_leaves_hp_param_min": 6, "num_leaves_hp_param_max": 11, "max_depth_hp_param_min": -1, "max_depth_hp_param_max": 4, "num_boost_round": 300, "min_data_in_leaf": 5}'
 
 cd "$( dirname "${BASH_SOURCE[0]}" )" || exit
 DIR="$( pwd )"
@@ -39,8 +40,11 @@ python -m pipelines.training_pipeline_runner \
   --data_region asia-southeast1 \
   --gcs_data_output_folder gs://vertex_pipeline_demo_root/datasets/training \
   --training_container_image_uri ${AF_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${AF_REGISTRY_NAME}/training:latest \
+  --train_additional_args $TRAIN_ARGS \
   --serving_container_image_uri ${AF_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${AF_REGISTRY_NAME}/serving:latest \
   --custom_job_service_account 297370817971-compute@developer.gserviceaccount.com \
+  --hp_config_max_trials 30 \
+  --hp_config_suggestions_per_request 5 \
   --vpc_network "" \
   --hptune_region asia-east1 \
   --metrics_name au_prc \

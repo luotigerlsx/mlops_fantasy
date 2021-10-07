@@ -43,6 +43,9 @@ def train_model(
     accelerator_count: int = 0,
     accelerator_type: str = 'ACCELERATOR_TYPE_UNSPECIFIED',
     hptune_region: str = None,
+    hp_config_max_trials: int = 30,
+    hp_config_suggestions_per_request: int = 5,
+    train_additional_args: str = None,
     vpc_network: str = None,
 ):
   """ Component to train a model by calling remote custom training pipeline job.
@@ -72,6 +75,9 @@ def train_model(
       accelerator_count: The number of accelerators to attach to the
         `machine_type`.
       hptune_region: The region for hyperparameter tuning job.
+      hp_config_max_trials: The max number of trials for hyperparameter tuning.
+      hp_config_suggestions_per_request: The number of suggestion per request.
+      train_additional_args: The training argument.
       vpc_network: The VPC network to execute the training job (optional).
   """
 
@@ -117,15 +123,15 @@ def train_model(
     '--metrics_output_uri', basic_metrics.uri,
     '--hp_config_gcp_project_id', project_id,
     '--hp_config_gcp_region', hptune_region,
-    '--hp_config_suggestions_per_request', 5,
-    '--hp_config_max_trials', 20,
-    '--num_leaves_hp_param_min', 6,
-    '--num_leaves_hp_param_max', 11,
-    '--max_depth_hp_param_min', -1,
-    '--max_depth_hp_param_max', 4,
-    '--num_boost_round', 300,
-    '--min_data_in_leaf', 5,
+    '--hp_config_suggestions_per_request', hp_config_suggestions_per_request,
+    '--hp_config_max_trials', hp_config_max_trials,
   ]
+
+  if train_additional_args:
+    arg_dict = json.loads(train_additional_args)
+    for item in arg_dict:
+      train_args.append('--'+item)
+      train_args.append(arg_dict[item])
 
   if hptune_region:
     train_args.append('--perform_hp',)

@@ -369,6 +369,12 @@
             "data_region": {
               "type": "STRING"
             },
+            "hp_config_max_trials": {
+              "type": "INT"
+            },
+            "hp_config_suggestions_per_request": {
+              "type": "INT"
+            },
             "hptune_region": {
               "type": "STRING"
             },
@@ -382,6 +388,9 @@
               "type": "STRING"
             },
             "serving_container_image_uri": {
+              "type": "STRING"
+            },
+            "train_additional_args": {
               "type": "STRING"
             },
             "training_container_image_uri": {
@@ -622,7 +631,7 @@
               "{{$.inputs.parameters['project_id']}}",
               "--data-region-output-path",
               "{{$.inputs.parameters['data_region']}}",
-              "--hptune_region-output-path",
+              "--hptune-region-output-path",
               "{{$.inputs.parameters['hptune_region']}}",
               "--data-pipeline-root-output-path",
               "{{$.inputs.parameters['data_pipeline_root']}}",
@@ -653,7 +662,13 @@
               "--instance-schema-dataset-output-path",
               "{{$.outputs.artifacts['instance_schema'].path}}",
               "--vpc-network-output-path",
-              "{{$.inputs.parameters['vpc_network']}}"
+              "{{$.inputs.parameters['vpc_network']}}",
+              "--train-additional-args-output-path",
+              "{{$.inputs.parameters['train_additional_args']}}",
+              "--hp-config-suggestions-per-request-output-path",
+              "{{$.inputs.parameters['hp_config_suggestions_per_request']}}",
+              "--hp-config-max-trials-output-path",
+              "{{$.inputs.parameters['hp_config_max_trials']}}"
             ],
             "command": [
               "python",
@@ -1013,6 +1028,12 @@
                 "data_region": {
                   "componentInputParameter": "data_region"
                 },
+                "hp_config_max_trials": {
+                  "componentInputParameter": "hp_config_max_trials"
+                },
+                "hp_config_suggestions_per_request": {
+                  "componentInputParameter": "hp_config_suggestions_per_request"
+                },
                 "hptune_region": {
                   "componentInputParameter": "hptune_region"
                 },
@@ -1027,6 +1048,9 @@
                 },
                 "serving_container_image_uri": {
                   "componentInputParameter": "serving_container_image_uri"
+                },
+                "train_additional_args": {
+                  "componentInputParameter": "train_additional_args"
                 },
                 "training_container_image_uri": {
                   "componentInputParameter": "training_container_image_uri"
@@ -1077,6 +1101,12 @@
           "gcs_data_output_folder": {
             "type": "STRING"
           },
+          "hp_config_max_trials": {
+            "type": "INT"
+          },
+          "hp_config_suggestions_per_request": {
+            "type": "INT"
+          },
           "hptune_region": {
             "type": "STRING"
           },
@@ -1114,6 +1144,9 @@
             "type": "STRING"
           },
           "serving_container_image_uri": {
+            "type": "STRING"
+          },
+          "train_additional_args": {
             "type": "STRING"
           },
           "training_container_image_uri": {

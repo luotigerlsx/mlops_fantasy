@@ -34,10 +34,13 @@ def run_training_pipeline():
   parser.add_argument('--gcs_data_output_folder', type=str)
   # Parameters required for training job
   parser.add_argument('--training_container_image_uri', type=str)
+  parser.add_argument('--train_additional_args', type=str, default='{}')
   parser.add_argument('--serving_container_image_uri', type=str)
   parser.add_argument('--custom_job_service_account', type=str)
   parser.add_argument('--vpc_network', type=str)
   parser.add_argument('--hptune_region', type=str)
+  parser.add_argument('--hp_config_max_trials', type=int, default=30)
+  parser.add_argument('--hp_config_suggestions_per_request', type=int, default=5)
 
   parser.add_argument('--metrics_name', type=str)
   parser.add_argument('--metrics_threshold', type=float)

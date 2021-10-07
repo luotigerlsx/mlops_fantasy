@@ -445,7 +445,7 @@ if __name__ == '__main__':
   parser.add_argument('--max_depth_hp_param_min', default=-1, type=float,
                       help='Max tree depth for base learners, <=0 means no '
                            'limit. Min value for hyperparam param')
-  parser.add_argument('--max_depth_hp_param_max', default=3, type=float,
+  parser.add_argument('--max_depth_hp_param_max', default=4, type=float,
                       help='Max tree depth for base learners, <=0 means no '
                            'limit.  Max value for hyperparam param')
   parser.add_argument('--num_leaves_hp_param_min', default=6, type=float,

@@ -27,6 +27,9 @@ inputs:
 - {name: accelerator_type, type: String}
 - {name: accelerator_count, type: Integer}
 - {name: vpc_network, type: String, optional: true}
+- {name: train_additional_args, type: String, optional: true}
+- {name: hp_config_max_trials, type: Integer, optional: true}
+- {name: hp_config_suggestions_per_request, type: Integer, optional: true}
 outputs:
 - {name: output_model, type: Model}
 - {name: basic_metrics, type: Metrics}
@@ -42,7 +45,7 @@ implementation:
       --function_to_execute, train_model,
       --project-id-output-path, {inputValue: project_id},
       --data-region-output-path, {inputValue: data_region},
-      --hptune_region-output-path, {inputValue: hptune_region},
+      --hptune-region-output-path, {inputValue: hptune_region},
       --data-pipeline-root-output-path, {inputValue: data_pipeline_root},
       --training-container-image-uri-output-path, {inputValue: training_container_image_uri},
       --serving-container-image-uri-output-path, {inputValue: serving_container_image_uri},
@@ -57,5 +60,8 @@ implementation:
       --classification-metrics-output-path, {outputPath: classification_metrics},
       --feature-importance-dataset-output-path, {outputPath: feature_importance_dataset},
       --instance-schema-dataset-output-path, {outputPath: instance_schema},
-      --vpc-network-output-path, {inputValue: vpc_network}
+      --vpc-network-output-path, {inputValue: vpc_network},
+      --train-additional-args-output-path, {inputValue: train_additional_args},
+      --hp-config-suggestions-per-request-output-path, {inputValue: hp_config_suggestions_per_request},
+      --hp-config-max-trials-output-path, {inputValue: hp_config_max_trials}
     ]
