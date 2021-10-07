@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import argparse
 from functools import partial
 
 import kfp
@@ -167,7 +168,13 @@ def create_training_pipeline(project_id: str,
 
 
 if __name__ == "__main__":
-  with open('settings.yaml', 'r') as config_file:
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--config', type=str,
+                      help='The config file for setting default values.')
+
+  args = parser.parse_args()
+
+  with open(args.config, 'r') as config_file:
     config = yaml.load(config_file, Loader=yaml.FullLoader)
 
     create_training_pipeline(

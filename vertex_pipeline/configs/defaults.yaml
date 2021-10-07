@@ -13,19 +13,19 @@
 # limitations under the License.
 
 gcp:
-  project_id: { project_id }
+  project_id: woven-rush-197905
   af_registry_location: asia-southeast1
-  af_registry_name: vertex-pipeline-registry
+  af_registry_name: mlops-vertex-kit
 
 pipelines:
   pipeline_region: asia-southeast1
-  pipeline_storage_path: { pipeline_storage_path }
-  pipeline_component_directory: { pipeline_component_directory }
+  pipeline_storage_path: gs://vertex_pipeline_demo_root/root
+  pipeline_component_directory: ../components
 
 train:
-  name: training-template
-  pipeline_job_spec_path: /{ workspace }/training_pipeline_job.json
+  name: training-pipeline-template
+  pipeline_job_spec_path: pipeline_spec/training_pipeline_job.json
 
 predict:
-  name: batch-prediction-template
-  pipeline_job_spec_path: /{ workspace }/batch_prediction_pipeline_job.json
+  name: batch-prediction-pipeline-template
+  pipeline_job_spec_path: pipeline_spec/batch_prediction_pipeline_job.json
