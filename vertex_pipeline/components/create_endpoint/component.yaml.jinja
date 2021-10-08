@@ -28,10 +28,10 @@ implementation:
     args: [
       --executor_input, {executorInput: null},
       --function_to_execute, get_or_create_endpoint,
-      --project-id-output-path, {inputValue: project_id},
-      --data-region-output-path, {inputValue: data_region},
-      --data-pipeline-root-output-path, {inputValue: data_pipeline_root},
-      --display-name-output-path, {inputValue: display_name},
-      --create-if-not-exists-output-path, {inputValue: create_if_not_exists},
-      --endpoint-output-path, {outputPath: endpoint}
+      --project-id, {inputValue: project_id},
+      --data-region, {inputValue: data_region},
+      --data-pipeline-root, {inputValue: data_pipeline_root},
+      --display-name, {inputValue: display_name},
+      --create-if-not-exists, {inputValue: create_if_not_exists},
+      --endpoint, {outputPath: endpoint}
     ]

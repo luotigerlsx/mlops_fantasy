@@ -30,12 +30,12 @@ implementation:
     args: [
       --executor_input, {executorInput: null},
       --function_to_execute, deploy_model,
-      --project-id-output-path, {inputValue: project_id},
-      --data-region-output-path, {inputValue: data_region},
-      --data-pipeline-root-output-path, {inputValue: data_pipeline_root},
-      --machine-type-output-path, {inputValue: machine_type},
-      --min-replica-count-output-path, {inputValue: min_replica_count},
-      --max-replica-count-output-path, {inputValue: max_replica_count},
-      --model-output-path, {inputPath: model},
-      --endpoint-output-path, {inputPath: endpoint}
+      --project-id, {inputValue: project_id},
+      --data-region, {inputValue: data_region},
+      --data-pipeline-root, {inputValue: data_pipeline_root},
+      --machine-type, {inputValue: machine_type},
+      --min-replica-count, {inputValue: min_replica_count},
+      --max-replica-count, {inputValue: max_replica_count},
+      --model, {inputPath: model},
+      --endpoint, {inputPath: endpoint}
     ]
