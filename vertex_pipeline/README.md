@@ -16,10 +16,57 @@ limitations under the License.
 -->
 
 # Vertex AI Pipeline
+This repository demonstrates end-to-end [MLOps process](https://services.google.com/fh/files/misc/practitioners_guide_to_mlops_whitepaper.pdf) 
+using [Vertex AI](https://cloud.google.com/vertex-ai) platform 
+and [Smart Analytics](https://cloud.google.com/solutions/smart-analytics) technology capabilities.
 
-This document describes the [Vertex AI Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines)
-artifacts contained in this repository in terms of pipelines, components and scripts, as well as the samples built to
-illustrate their usage.
+In particular two general [Vertex AI Pipeline](https://cloud.google.com/vertex-ai/docs/pipelines) 
+templates has been provided:
+- Training pipeline including:
+  - Data processing
+  - Custom model training
+  - Model evaluation
+  - Endpoint creation
+  - Model deployment
+  - Deployment testing
+  - Model monitoring
+- Batch-prediction pipeline including
+  - Data processing
+  - Batch prediction using deployed model
+
+Note that besides Data processing being done using BigQuery, all other steps are build on top of
+[Vertex AI](https://cloud.google.com/vertex-ai) platform capabilities.
+
+<p align="center">
+    <img src="./training_pipeline.png" alt="Sample Training Pipeline" width="400"/>
+</p>
+
+### Dataset
+The dataset used throughout the demonstration is
+[Banknote Authentication Data Set](https://archive.ics.uci.edu/ml/datasets/banknote+authentication).
+Data were extracted from images that were taken from genuine and forged banknote-like specimens. 
+For digitization, an industrial camera usually used for print inspection was used. 
+The final images have 400x 400 pixels. Due to the object lens and distance to the 
+investigated object gray-scale pictures with a resolution of about 660 dpi were gained. 
+Wavelet Transform tool were used to extract features from images.
+Attribute Information:
+1. variance of Wavelet Transformed image (continuous)
+2. skewness of Wavelet Transformed image (continuous)
+3. curtosis of Wavelet Transformed image (continuous)
+4. entropy of image (continuous)
+5. class (integer)
+
+### Machine Learning Problem
+Given the Banknote Authentication Data Set, a binary classification problem is adopted where 
+attribute `class` is chosen as label and the remaining attributes are used as features.
+
+[LightGBM](https://github.com/microsoft/LightGBM), a gradient boosting framework that uses tree based 
+learning algorithms, is used to train the model for purpose of demonstrating 
+[custom training](https://cloud.google.com/vertex-ai/docs/training/custom-training) and
+[custom serving](https://cloud.google.com/vertex-ai/docs/predictions/use-custom-container) 
+capabilities of Vertex AI platform, which provide more native support for e.g. Tensorflow,
+Pytorch, Scikit-Learn and Pytorch.
+
 
 ## Repository Structure
 
@@ -27,14 +74,17 @@ The repository contains the following:
 
 ```
 .
-├── scripts       : cloud build configuration and build scripts
-├── components    : vertex pipeline components
-├── images        : vertex pipeline images
-├── pipelines     : vertex pipeline definitions 
-├── configs       : vertex pipeline definitions 
-└── notebooks     : notebooks used in workshop or experimentation
-
+├── components    : custom vertex pipeline components
+├── images        : custom container images for training and serving
+├── pipelines     : vertex ai pipeline definitions and runners
+├── configs       : configurations for defining vertex ai pipeline
+├── scripts       : scripts for runing local testing 
+└── notebooks     : notebooks used development and testing of vertex ai pipeline
 ```
+In addition
+- `build_components_cb.sh`: build all components under `components` folder using Cloud Build
+- `build_images_cb.sh`: build custom images under `images` folder using Cloud Build
+- `build_pipeline_cb.sh`: build training and batch-prediction pipeline under `pipelines` folder using Cloud Build
 
 ## Building and Running the Training / Prediction Pipelines
 
