@@ -38,7 +38,7 @@ Note that besides Data processing being done using BigQuery, all other steps are
 [Vertex AI](https://cloud.google.com/vertex-ai) platform capabilities.
 
 <p align="center">
-    <img src="./training_pipeline.png" alt="Sample Training Pipeline" width="400"/>
+    <img src="./training_pipeline.png" alt="Sample Training Pipeline" width="600"/>
 </p>
 
 ### Dataset
@@ -82,48 +82,83 @@ The repository contains the following:
 └── notebooks     : notebooks used development and testing of vertex ai pipeline
 ```
 In addition
-- `build_components_cb.sh`: build all components under `components` folder using Cloud Build
-- `build_images_cb.sh`: build custom images under `images` folder using Cloud Build
-- `build_pipeline_cb.sh`: build training and batch-prediction pipeline under `pipelines` folder using Cloud Build
+- `build_components_cb.sh`: build all components defined in `components` folder using Cloud Build
+- `build_images_cb.sh`: build custom images (training and serving) defined in `images` folder using Cloud Build
+- `build_pipeline_cb.sh`: build training and batch-prediction pipeline defined in `pipelines` folder using Cloud Build
 
-## Building and Running the Training / Prediction Pipelines
+## Get Started
 
 The end-to-end process of creating and running the training pipeline contains the following steps:
 
-1. Create the components required to build and run the pipeline
-2. Prepare the configuration files of the various steps of the pipeline
-3. Build the pipeline
-4. Run the pipeline
+1. Setting up [MLOps environment](https://github.com/GoogleCloudPlatform/mlops-with-vertex-ai/tree/main/provision) on Google Cloud.
+2. Create an [Artifact Registry](https://cloud.google.com/artifact-registry) for your organization to manage container images
+3. Develop the training and serving logic
+4. Create the components required to build and run the pipeline
+5. Prepare and consolidate the configurations of the various steps of the pipeline
+6. Build the pipeline
+7. Run and orchestrate the pipeline
 
-### Building Components
+### Create Artifact Registry
+[Artifact Registry](https://cloud.google.com/artifact-registry)
+is a single place for your organization to manage container images and language 
+packages (such as Maven and npm). It is fully integrated with Google Cloud’s tooling and 
+runtimes and comes with support for native artifact protocols. More importantly, it supports 
+regional and multi-regional repositories.
 
-The components and supporting images can be built using the provided Cloud Build configuration files.
+We have provided a helper script: `scripts/create_artifact_registry.sh`
 
-To build the supporting images, run the following in the source repo root directory:
 
-```bash
-sh build_images_cb.sh
-```
+### Develop Training and Serving Logic
+Develop your machine learning program and then containerize them as demonstrated in `images`. 
+The requirements for writing training code can be found 
+[here](https://cloud.google.com/vertex-ai/docs/training/code-requirements) as well.
+Note that custom serving image is not necessary if your choosen framework is supported by 
+[pre-built-container](https://cloud.google.com/vertex-ai/docs/predictions/pre-built-containers),
+which are organized by machine learning (ML) framework and framework version, 
+provide HTTP prediction servers that you can use to serve predictions with minimal configuration
 
-To build the pipeline components, and the pipeline job specifications, run the following in the source repo root
-directory:
+We have also provided helper scripts:
+- `scripts/test_training.sh`: test the training program locally
+- `scripts/test_serving.sh`: test the serving program locally
+- `build_images_cb.sh`: build the images using Cloud Build service
 
-```bash
-sh build_components_cb.sh
-```
+#### Environment variables for special Cloud Storage directories
+Vertex AI sets the following environment variables when it runs your training code:
 
-To build the pipeline job specifications, run the following in the source repo root
-directory:
+- `AIP_MODEL_DIR`: a Cloud Storage URI of a directory intended for saving model artifacts.
+- `AIP_CHECKPOINT_DIR`: a Cloud Storage URI of a directory intended for saving checkpoints.
+- `AIP_TENSORBOARD_LOG_DIR`: a Cloud Storage URI of a directory intended for saving TensorBoard logs. See Using Vertex TensorBoard with custom training.
 
-```bash
-sh build_pipeline_cb.sh
-```
+### Build Components
+The following template custom components are provided:
+- `components/data_process`: read BQ table, perform transformation in BQ and export to GCS
+- `components/train_model`: launch custom (distributed) training job on Vertex AI platform 
+- `components/check_model_metrics`: check the metrics of a training job and verify whether it produces better model
+- `components/create_endpoint`: create an endpoint on Vertex AI platform
+- `components/deploy_model`: deployed a model artifact to a created endpoint on Vertex AI platform
+- `components/test_endpoint`: call the endpoint of deployed model for verification
+- `components/monitor_model`: track deployed model performance using Vertex Model Monitoring
+- `components/batch_prediction`: launch batch prediction job on Vertex AI platform
 
-### Configuration and Execution
+We have also provided a helper script: `build_components_cb.sh`
 
-#### Manual Trigger
+### Build Pipeline
+The sample definition of pipelines are
+- `pipelines/training_pipeline.py`
+- `pipelines/batch_prediction_pipeline.py`
 
-For manual triggering, the following two scripts should be updated:
+We have also provided helper scripts:
+- `scripts/build_pipeline_local.sh`: compile and build the pipeline specs locally
+- `scripts/run_training_pipeline.sh`: create and run training Vertex AI Pipeline based on the specs
+- `scripts/run_batch_prediction_pipeline.sh`: create and run batch-prediction Vertex AI Pipeline based on the specs
+- `build_pipeline_cb.sh`: compile and build the pipeline specs using Cloud Build service
 
-* `scripts/run_training_pipeline.sh`
-* `scripts/run_batch_prediction_pipeline.sh`
+### Some common parameters
+|Field|Explanation|
+|-----|-----|
+|project_id|Your GCP project|
+|pipeline_region|The region to run Vertex AI Pipeline|
+|pipeline_root|The GCS buckets used for storing artifacts of your pipeline runs|
+|data_pipeline_root|The GCS staging location for custom job|
+|input_dataset_uri|Full URI of input dataset|
+|data_region|Region of input dataset|
