@@ -154,7 +154,7 @@ using the provided runner
 
 An example to run training pipeline using the runner
 ```shell
-python -m pipelines.training_pipeline_runner \
+python training_pipeline_runner \
   --project_id "$PROJECT_ID" \
   --pipeline_region $PIPELINE_REGION \
   --pipeline_root $PIPELINE_ROOT \

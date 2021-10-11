@@ -24,6 +24,46 @@ steps:
     dir: 'vertex_pipeline/scripts/pipeline_spec'
     id: 'Save pipeline specs'
 
+#  # Run the pipeline with newly built spec
+#  - name: "${_AF_REGISTRY_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AF_REGISTRY_NAME}/component-base:latest"
+#    args:
+#     - '-c'
+#     - |
+#       python training_pipeline_runner.py \
+#         --project_id "$PROJECT_ID" \
+#         --pipeline_region $_PIPELINE_REGION \
+#         --pipeline_root $_PIPELINE_ROOT \
+#         --pipeline_job_spec_path $_PIPELINE_REGISTRY/latest/training_pipeline.json \
+#         --data_pipeline_root $_DATA_PIPELINE_ROOT \
+#         --input_dataset_uri "$_DATA_URI" \
+#         --training_data_schema ${_DATA_SCHEMA} \
+#         --data_region $_DATA_REGION \
+#         --gcs_data_output_folder $_GCS_OUTPUT_PATH \
+#         --training_container_image_uri "$_TRAIN_IMAGE_URI" \
+#         --train_additional_args $_TRAIN_ARGS \
+#         --serving_container_image_uri "$_SERVING_IMAGE_URI" \
+#         --custom_job_service_account $_CUSTOM_JOB_SA \
+#         --hptune_region $_PIPELINE_REGION \
+#         --hp_config_max_trials 30 \
+#         --hp_config_suggestions_per_request 5 \
+#         --vpc_network "$_VPC_NETWORK" \
+#         --metrics_name $_METRIC_NAME \
+#         --metrics_threshold $_METRIC_THRESHOLD \
+#         --endpoint_machine_type n1-standard-4 \
+#         --endpoint_min_replica_count 1 \
+#         --endpoint_max_replica_count 2 \
+#         --endpoint_test_instances ${_TEST_INSTANCE} \
+#         --monitoring_user_emails $_MONITORING_EMAIL \
+#         --monitoring_log_sample_rate 0.8 \
+#         --monitor_interval 3600 \
+#         --monitoring_default_threshold 0.3 \
+#         --monitoring_custom_skew_thresholds $_MONITORING_CONFIG \
+#         --monitoring_custom_drift_thresholds $_MONITORING_CONFIG \
+#         --enable_model_monitoring True \
+#         --pipeline_schedule $_PIPELINE_SCHEDULE \
+#         --pipeline_schedule_timezone $_PIPELINE_TIMEZONE
+#    dir: 'vertex_pipeline/pipelines'
+#    id: 'Run pipeline'
 
 # store artifacts (pipelines) in storage
 artifacts:
