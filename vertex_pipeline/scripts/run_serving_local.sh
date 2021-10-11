@@ -14,15 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Local testing of serving program
+
 cd "$( dirname "${BASH_SOURCE[0]}" )" || exit
 DIR="$( pwd )"
 SRC_DIR=${DIR}"/../"
 export PYTHONPATH=${PYTHONPATH}:${SRC_DIR}
 echo "PYTHONPATH="${PYTHONPATH}
 
-rm -r pipeline_spec
-mkdir pipeline_spec
+PROJECT_ID=$(gcloud config get-value project)
 
-python -m pipelines.training_pipeline --config ../configs/defaults.yaml
+# The dataset used throughout the demonstration is
+# Banknote Authentication Data Set, you may change according to your needs.
+# The schema should be in the format of 'field_name:filed_type;...'
+export TRAINING_DATA_SCHEMA='VWT:float;SWT:float;KWT:float;Entropy:float;Class:int'
 
-python -m pipelines.batch_prediction_pipeline --config ../configs/defaults.yaml
+python -m images.serving.app

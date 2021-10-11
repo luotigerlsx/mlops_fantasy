@@ -18,8 +18,10 @@
 
 export PROJECT_ID=$(gcloud config get-value core/project)
 
+# Please modify the following accordingly
 AF_REGISTRY_LOCATION=asia-southeast1
 AF_REGISTRY_NAME=mlops-vertex-kit
+# The GCS bucket to store the versioned compiled pipeline specs
 PIPELINE_REGISTRY=gs://vertex_pipeline_demo_root/pipeline_spec
 
 SUBSTITUTIONS=\

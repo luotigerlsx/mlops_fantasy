@@ -20,8 +20,11 @@ SRC_DIR=${DIR}"/../"
 export PYTHONPATH=${PYTHONPATH}:${SRC_DIR}
 echo "PYTHONPATH="${PYTHONPATH}
 
-PROJECT_ID=$(gcloud config get-value project)
+CONFIG_FILE=../configs/defaults.yaml
 
-export TRAINING_DATA_SCHEMA='VWT:float;SWT:float;KWT:float;Entropy:float;Class:int'
+rm -r pipeline_spec
+mkdir pipeline_spec
 
-python -m images.serving.app
+python -m pipelines.training_pipeline --config $CONFIG_FILE
+
+python -m pipelines.batch_prediction_pipeline --config $CONFIG_FILE

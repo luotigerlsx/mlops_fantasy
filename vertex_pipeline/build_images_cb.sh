@@ -17,8 +17,9 @@
 # the pipelines and pipelines components
 
 export PROJECT_ID=$(gcloud config get-value core/project)
-export TAG_NAME=latest
 
+# Please modify the following accordingly
+TAG_NAME=latest
 AF_REGISTRY_LOCATION=asia-southeast1
 AF_REGISTRY_NAME=mlops-vertex-kit
 

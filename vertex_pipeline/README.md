@@ -118,8 +118,8 @@ which are organized by machine learning (ML) framework and framework version,
 provide HTTP prediction servers that you can use to serve predictions with minimal configuration
 
 We have also provided helper scripts:
-- `scripts/test_training.sh`: test the training program locally
-- `scripts/test_serving.sh`: test the serving program locally
+- `scripts/run_training_local.sh`: test the training program locally
+- `scripts/run_serving_local.sh`: test the serving program locally
 - `build_images_cb.sh`: build the images using Cloud Build service
 
 #### Environment variables for special Cloud Storage directories
@@ -148,10 +148,10 @@ The sample definition of pipelines are
 - `pipelines/batch_prediction_pipeline.py`
 
 We have also provided helper scripts:
-- `scripts/build_pipeline_local.sh`: compile and build the pipeline specs locally
+- `scripts/build_pipeline_spec.sh`: compile and build the pipeline specs locally
 - `scripts/run_training_pipeline.sh`: create and run training Vertex AI Pipeline based on the specs
 - `scripts/run_batch_prediction_pipeline.sh`: create and run batch-prediction Vertex AI Pipeline based on the specs
-- `build_pipeline_cb.sh`: compile and build the pipeline specs using Cloud Build service
+- `build_pipeline_spec_cb.sh`: compile and build the pipeline specs using Cloud Build service
 
 ### Some common parameters
 |Field|Explanation|

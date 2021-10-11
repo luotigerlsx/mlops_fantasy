@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Local testing of training program
+
 cd "$( dirname "${BASH_SOURCE[0]}" )" || exit
 DIR="$( pwd )"
 SRC_DIR=${DIR}"/../"
@@ -22,20 +24,28 @@ echo "PYTHONPATH="${PYTHONPATH}
 
 PROJECT_ID=$(gcloud config get-value project)
 
+# The dataset used throughout the demonstration is
+# Banknote Authentication Data Set, you may change according to your needs.
+# The schema should be in the format of 'field_name:filed_type;...'
 DATA_SCHEMA='VWT:float;SWT:float;KWT:float;Entropy:float;Class:int'
+DATA_PATH=gs://mldataset-fantasy/banknote_authentication.csv
+LABEL_FIELD=Class
+
+# Please modify the following accordingly
+VIZER_REGION=asia-southeast1
 
 python -m images.training.app \
-  --training_data_uri=gs://mldataset-fantasy/banknote_authentication.csv \
-  --training_data_schema=$DATA_SCHEMA\
-  --label=Class \
+  --training_data_uri=$DATA_PATH \
+  --training_data_schema=$DATA_SCHEMA \
+  --label=$LABEL_FIELD \
   --perform_hp \
   --hp_config_gcp_project_id="${PROJECT_ID}" \
-  --hp_config_gcp_region=asia-east1 \
+  --hp_config_gcp_region=$VIZER_REGION \
   --hp_config_suggestions_per_request=5 \
   --hp_config_max_trials=20 \
+  --num_boost_round=300 \
+  --min_data_in_leaf=5 \
   --num_leaves_hp_param_min=6 \
   --num_leaves_hp_param_max=11 \
   --max_depth_hp_param_min=-1 \
-  --max_depth_hp_param_max=4 \
-  --num_boost_round=300 \
-  --min_data_in_leaf=5
+  --max_depth_hp_param_max=4

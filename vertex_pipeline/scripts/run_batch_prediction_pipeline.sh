@@ -14,28 +14,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PROJECT_ID=$(gcloud config get-value project)
-
-ENDPOINT='projects/297370817971/locations/asia-southeast1/endpoints/8843521555783745536'
-
-
 cd "$( dirname "${BASH_SOURCE[0]}" )" || exit
 DIR="$( pwd )"
 SRC_DIR=${DIR}"/../"
 export PYTHONPATH=${PYTHONPATH}:${SRC_DIR}
 echo "PYTHONPATH="${PYTHONPATH}
 
+PROJECT_ID=$(gcloud config get-value project)
+
+# Please modify the following accordingly
+PIPELINE_REGION=asia-southeast1
+
+PIPELINE_ROOT=gs://vertex_pipeline_demo_root/pipeline_root # The GCS path for storing artifacts of pipeline runs
+DATA_PIPELINE_ROOT=gs://vertex_pipeline_demo_root/compute_root # The GCS staging location for custom job
+GCS_OUTPUT_PATH=gs://vertex_pipeline_demo_root/datasets/prediction # The GCS path for storing processed data
+GCS_PREDICTION_PATH=gs://vertex_pipeline_demo_root/prediction # The GCS path for storing prediction results
+
+# Setup for dataset
+DATA_URI=bq://"$PROJECT_ID".vertex_pipeline_demo.banknote_authentication_features
+DATA_REGION=asia-southeast1
+
+# The endpoint resource name that hosting the target model
+# You may also use target model resource name directly, in the case please use
+# --model_resource_name $MODEL_RN
+ENDPOINT_RN='projects/297370817971/locations/asia-southeast1/endpoints/8843521555783745536'
+
+PIPELINE_SPEC_PATH=./pipeline_spec/batch_prediction_pipeline_job.json
+
 python -m pipelines.batch_prediction_pipeline_runner \
   --project_id "$PROJECT_ID" \
-  --pipeline_region asia-southeast1 \
-  --pipeline_root gs://vertex_pipeline_demo_root/pipeline_root \
-  --pipeline_job_spec_path ./pipeline_spec/batch_prediction_pipeline_job.json \
-  --data_pipeline_root gs://vertex_pipeline_demo_root/compute_root \
-  --input_dataset_uri bq://"$PROJECT_ID".vertex_pipeline_demo.banknote_authentication_features \
-  --data_region asia-southeast1 \
-  --gcs_data_output_folder gs://vertex_pipeline_demo_root/datasets/prediction \
-  --gcs_result_folder gs://vertex_pipeline_demo_root/prediction \
-  --endpoint_resource_name $ENDPOINT\
+  --pipeline_region $PIPELINE_REGION \
+  --pipeline_root $PIPELINE_ROOT \
+  --pipeline_job_spec_path $PIPELINE_SPEC_PATH \
+  --data_pipeline_root $DATA_PIPELINE_ROOT \
+  --input_dataset_uri "$DATA_URI" \
+  --data_region $DATA_REGION \
+  --gcs_data_output_folder $GCS_OUTPUT_PATH \
+  --gcs_result_folder $GCS_PREDICTION_PATH \
+  --endpoint_resource_name $ENDPOINT_RN \
   --machine_type n1-standard-8 \
   --accelerator_count 0 \
   --accelerator_type ACCELERATOR_TYPE_UNSPECIFIED \

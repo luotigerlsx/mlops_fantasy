@@ -16,6 +16,8 @@
 # Submits a Cloud Build job that builds and deploys
 # the pipelines and pipelines components
 
+# Creat a regional Artifact Registry
+
 if [ $# -ne 1 ]
 then
     echo "Creates a artifact registry in pre-configured region (default asia-southeast1)."
@@ -26,15 +28,15 @@ fi
 AF_REGISTRY_NAME=$1
 PROJECT_ID=$(gcloud config get-value core/project)
 # Set regional artifact registry location
-REGION=asia-southeast1
+AF_REGION=asia-southeast1
 
-if ! (gcloud artifacts repositories list --project="$PROJECT_ID" --location=$REGION | grep --fixed-strings "$AF_REGISTRY_NAME"); then
+if ! (gcloud artifacts repositories list --project="$PROJECT_ID" --location=$AF_REGION | grep --fixed-strings "$AF_REGISTRY_NAME"); then
 
   gcloud artifacts repositories create "$AF_REGISTRY_NAME" \
     --repository-format=docker \
-    --location=$REGION \
+    --location=$AF_REGION \
     --project="$PROJECT_ID" \
-    --description="Artifact Registry ${AF_REGISTRY_NAME} in ${REGION}."
+    --description="Artifact Registry ${AF_REGISTRY_NAME} in ${AF_REGION}."
 fi
 
 gcloud artifacts repositories list --project="$PROJECT_ID"

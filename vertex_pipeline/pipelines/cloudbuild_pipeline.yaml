@@ -15,7 +15,7 @@
 steps:
 
   - name: "${_AF_REGISTRY_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AF_REGISTRY_NAME}/component-base:latest"
-    args: [ './build_pipeline_local.sh' ]
+    args: [ './build_pipeline_spec.sh' ]
     dir: 'vertex_pipeline/scripts'
     id: 'Build pipeline specs'
 
