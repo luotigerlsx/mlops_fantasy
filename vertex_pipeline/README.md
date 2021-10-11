@@ -142,16 +142,60 @@ The following template custom components are provided:
 
 We have also provided a helper script: `build_components_cb.sh`
 
-### Build Pipeline
+### Build and Run Pipeline
 The sample definition of pipelines are
 - `pipelines/training_pipeline.py`
 - `pipelines/batch_prediction_pipeline.py`
+
+After compiled the training or batch-prediction pipeline, you may trigger the pipeline run
+using the provided runner
+- `pipelines/trainin_pipeline_runner.py`
+- `pipelines/batch_prediction_pipeline_runner.py`
+
+An example to run training pipeline using the runner
+```shell
+python -m pipelines.training_pipeline_runner \
+  --project_id "$PROJECT_ID" \
+  --pipeline_region $PIPELINE_REGION \
+  --pipeline_root $PIPELINE_ROOT \
+  --pipeline_job_spec_path $PIPELINE_SPEC_PATH \
+  --data_pipeline_root $DATA_PIPELINE_ROOT \
+  --input_dataset_uri "$DATA_URI" \
+  --training_data_schema ${DATA_SCHEMA} \
+  --data_region $DATA_REGION \
+  --gcs_data_output_folder $GCS_OUTPUT_PATH \
+  --training_container_image_uri "$TRAIN_IMAGE_URI" \
+  --train_additional_args $TRAIN_ARGS \
+  --serving_container_image_uri "$SERVING_IMAGE_URI" \
+  --custom_job_service_account $CUSTOM_JOB_SA \
+  --hptune_region $PIPELINE_REGION \
+  --hp_config_max_trials 30 \
+  --hp_config_suggestions_per_request 5 \
+  --vpc_network "$VPC_NETWORK" \
+  --metrics_name $METRIC_NAME \
+  --metrics_threshold $METRIC_THRESHOLD \
+  --endpoint_machine_type n1-standard-4 \
+  --endpoint_min_replica_count 1 \
+  --endpoint_max_replica_count 2 \
+  --endpoint_test_instances ${TEST_INSTANCE} \
+  --monitoring_user_emails $MONITORING_EMAIL \
+  --monitoring_log_sample_rate 0.8 \
+  --monitor_interval 3600 \
+  --monitoring_default_threshold 0.3 \
+  --monitoring_custom_skew_thresholds $MONITORING_CONFIG \
+  --monitoring_custom_drift_thresholds $MONITORING_CONFIG \
+  --enable_model_monitoring True \
+  --pipeline_schedule "0 2 * * *" \
+  --pipeline_schedule_timezone "US/Pacific" \
+  --enable_pipeline_caching
+```
 
 We have also provided helper scripts:
 - `scripts/build_pipeline_spec.sh`: compile and build the pipeline specs locally
 - `scripts/run_training_pipeline.sh`: create and run training Vertex AI Pipeline based on the specs
 - `scripts/run_batch_prediction_pipeline.sh`: create and run batch-prediction Vertex AI Pipeline based on the specs
 - `build_pipeline_spec_cb.sh`: compile and build the pipeline specs using Cloud Build service
+
 
 ### Some common parameters
 |Field|Explanation|

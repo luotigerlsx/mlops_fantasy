@@ -35,36 +35,42 @@ def run_training_pipeline():
   # Parameters required for training job
   parser.add_argument('--model_resource_name', type=str, default='')
   parser.add_argument('--endpoint_resource_name', type=str, default='')
-
+  # Parameters required for batch prediction job
   parser.add_argument('--machine_type', type=str, default='n1-standard-4')
   parser.add_argument('--accelerator_count', type=int, default=0)
   parser.add_argument('--accelerator_type',
                       type=str, default='ACCELERATOR_TYPE_UNSPECIFIED')
   parser.add_argument('--starting_replica_count', type=int, default=1)
   parser.add_argument('--max_replica_count', type=int, default=2)
+  # Parameters required for pipeline scheduling
   parser.add_argument('--pipeline_schedule',
                       type=str, default='', help='0 2 * * *')
   parser.add_argument('--pipeline_schedule_timezone',
                       type=str, default='US/Pacific')
+
+  parser.add_argument('--enable_pipeline_caching',
+                      action='store_true',
+                      default=False,
+                      help='Specify whether to enable caching.')
 
   args, _ = parser.parse_known_args()
   logging.info(args)
 
   api_client = AIPlatformClient(args.project_id, args.pipeline_region)
 
+  params_to_remove = ['pipeline_region', 'pipeline_root',
+                      'pipeline_job_spec_path', 'pipeline_schedule',
+                      'pipeline_schedule_timezone', 'enable_pipeline_caching']
   pipeline_params = vars(args).copy()
-  pipeline_params.pop('pipeline_region', None)
-  pipeline_params.pop('pipeline_root', None)
-  pipeline_params.pop('pipeline_job_spec_path', None)
-  pipeline_params.pop('pipeline_schedule', None)
-  pipeline_params.pop('pipeline_schedule_timezone', None)
+  for item in params_to_remove:
+    pipeline_params.pop(item, None)
 
   if not args.pipeline_schedule:
     api_client.create_run_from_job_spec(
       args.pipeline_job_spec_path,
       pipeline_root=args.pipeline_root,
       parameter_values=pipeline_params,
-      enable_caching=False
+      enable_caching=args.enable_pipeline_caching
     )
   else:
     api_client.create_schedule_from_job_spec(
@@ -73,7 +79,7 @@ def run_training_pipeline():
       time_zone=args.pipeline_schedule_timezone,
       pipeline_root=args.pipeline_root,
       parameter_values=pipeline_params,
-      enable_caching=False
+      enable_caching=args.enable_pipeline_caching
     )
 
 

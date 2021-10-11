@@ -17,12 +17,12 @@ import os
 import argparse
 from functools import partial
 
-import kfp
 import yaml
-from jinja2 import Template
+import kfp
 from kfp.v2 import dsl
 from kfp.v2.compiler import compiler
 from kfp.v2.dsl import Dataset
+from jinja2 import Template
 
 
 def _load_custom_component(project_id: str,
