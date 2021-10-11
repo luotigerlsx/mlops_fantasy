@@ -470,4 +470,5 @@ if __name__ == '__main__':
                       help='GCP project id.')
 
   logging.info(parser.parse_args())
-  train(parser.parse_args())
+  args, _ = parser.parse_known_args()
+  train(args)

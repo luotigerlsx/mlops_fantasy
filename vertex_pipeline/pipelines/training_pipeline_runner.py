@@ -35,6 +35,7 @@ def run_training_pipeline():
   # Parameters required for training job
   parser.add_argument('--training_container_image_uri', type=str)
   parser.add_argument('--train_additional_args', type=str, default='{}')
+  parser.add_argument('--output_model_file_name', type=str, default='model.txt')
   parser.add_argument('--serving_container_image_uri', type=str)
   parser.add_argument('--custom_job_service_account', type=str)
   parser.add_argument('--vpc_network', type=str)

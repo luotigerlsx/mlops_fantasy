@@ -28,5 +28,6 @@ PROJECT_ID=$(gcloud config get-value project)
 # Banknote Authentication Data Set, you may change according to your needs.
 # The schema should be in the format of 'field_name:filed_type;...'
 export TRAINING_DATA_SCHEMA='VWT:float;SWT:float;KWT:float;Entropy:float;Class:int'
+export MODEL_FILENAME='model.txt'
 
 python -m images.serving.app

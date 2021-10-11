@@ -634,6 +634,12 @@
             "data_region": {
               "type": "STRING"
             },
+            "hp_config_max_trials": {
+              "type": "INT"
+            },
+            "hp_config_suggestions_per_request": {
+              "type": "INT"
+            },
             "hptune_region": {
               "type": "STRING"
             },
@@ -643,10 +649,16 @@
             "machine_type": {
               "type": "STRING"
             },
+            "output_model_file_name": {
+              "type": "STRING"
+            },
             "project_id": {
               "type": "STRING"
             },
             "serving_container_image_uri": {
+              "type": "STRING"
+            },
+            "train_additional_args": {
               "type": "STRING"
             },
             "training_container_image_uri": {
@@ -706,7 +718,7 @@
               "{{$.inputs.parameters['metrics_name']}}",
               "--metrics-threshold-path",
               "{{$.inputs.parameters['metrics_threshold']}}",
-              "--basic-metrics-output-path",
+              "--basic-metrics",
               "{{$.inputs.artifacts['basic_metrics'].path}}",
               "--is-better-metrics",
               "{{$.outputs.parameters['is_better_metrics'].output_file}}"
@@ -725,17 +737,17 @@
               "{{$}}",
               "--function_to_execute",
               "get_or_create_endpoint",
-              "--project-id-output-path",
+              "--project-id",
               "{{$.inputs.parameters['project_id']}}",
-              "--data-region-output-path",
+              "--data-region",
               "{{$.inputs.parameters['data_region']}}",
-              "--data-pipeline-root-output-path",
+              "--data-pipeline-root",
               "{{$.inputs.parameters['data_pipeline_root']}}",
-              "--display-name-output-path",
+              "--display-name",
               "{{$.inputs.parameters['display_name']}}",
-              "--create-if-not-exists-output-path",
+              "--create-if-not-exists",
               "{{$.inputs.parameters['create_if_not_exists']}}",
-              "--endpoint-output-path",
+              "--endpoint",
               "{{$.outputs.artifacts['endpoint'].path}}"
             ],
             "command": [
@@ -752,17 +764,17 @@
               "{{$}}",
               "--function_to_execute",
               "preprocess_data",
-              "--project-id-output-path",
+              "--project-id",
               "{{$.inputs.parameters['project_id']}}",
-              "--data-region-output-path",
+              "--data-region",
               "{{$.inputs.parameters['data_region']}}",
-              "--gcs-output-folder-output-path",
+              "--gcs-output-folder",
               "{{$.inputs.parameters['gcs_output_folder']}}",
-              "--gcs-output-format-output-path",
+              "--gcs-output-format",
               "{{$.inputs.parameters['gcs_output_format']}}",
-              "--input-dataset-output-path",
+              "--input-dataset",
               "{{$.inputs.artifacts['input_dataset'].path}}",
-              "--output-dataset-output-path",
+              "--output-dataset",
               "{{$.outputs.artifacts['output_dataset'].path}}"
             ],
             "command": [
@@ -779,21 +791,21 @@
               "{{$}}",
               "--function_to_execute",
               "deploy_model",
-              "--project-id-output-path",
+              "--project-id",
               "{{$.inputs.parameters['project_id']}}",
-              "--data-region-output-path",
+              "--data-region",
               "{{$.inputs.parameters['data_region']}}",
-              "--data-pipeline-root-output-path",
+              "--data-pipeline-root",
               "{{$.inputs.parameters['data_pipeline_root']}}",
-              "--machine-type-output-path",
+              "--machine-type",
               "{{$.inputs.parameters['machine_type']}}",
-              "--min-replica-count-output-path",
+              "--min-replica-count",
               "{{$.inputs.parameters['min_replica_count']}}",
-              "--max-replica-count-output-path",
+              "--max-replica-count",
               "{{$.inputs.parameters['max_replica_count']}}",
-              "--model-output-path",
+              "--model",
               "{{$.inputs.artifacts['model'].path}}",
-              "--endpoint-output-path",
+              "--endpoint",
               "{{$.inputs.artifacts['endpoint'].path}}"
             ],
             "command": [
@@ -821,27 +833,27 @@
               "{{$}}",
               "--function_to_execute",
               "monitor_model",
-              "--project-id-output-path",
+              "--project-id",
               "{{$.inputs.parameters['project_id']}}",
-              "--data-region-output-path",
+              "--data-region",
               "{{$.inputs.parameters['data_region']}}",
-              "--user-emails-output-path",
+              "--user-emails",
               "{{$.inputs.parameters['user_emails']}}",
-              "--log-sample-rate-output-path",
+              "--log-sample-rate",
               "{{$.inputs.parameters['log_sample_rate']}}",
-              "--monitor-interval-output-path",
+              "--monitor-interval",
               "{{$.inputs.parameters['monitor_interval']}}",
-              "--default-threshold-output-path",
+              "--default-threshold",
               "{{$.inputs.parameters['default_threshold']}}",
-              "--custom-skew-thresholds-output-path",
+              "--custom-skew-thresholds",
               "{{$.inputs.parameters['custom_skew_thresholds']}}",
-              "--custom-drift-thresholds-output-path",
+              "--custom-drift-thresholds",
               "{{$.inputs.parameters['custom_drift_thresholds']}}",
-              "--endpoint-output-path",
+              "--endpoint",
               "{{$.inputs.artifacts['endpoint'].path}}",
-              "--instance-schema-output-path",
+              "--instance-schema",
               "{{$.inputs.artifacts['instance_schema'].path}}",
-              "--dataset-output-path",
+              "--dataset",
               "{{$.inputs.artifacts['dataset'].path}}"
             ],
             "command": [
@@ -858,15 +870,15 @@
               "{{$}}",
               "--function_to_execute",
               "test_endpoint",
-              "--project-id-output-path",
+              "--project-id",
               "{{$.inputs.parameters['project_id']}}",
-              "--data-region-output-path",
+              "--data-region",
               "{{$.inputs.parameters['data_region']}}",
-              "--data-pipeline-root-output-path",
+              "--data-pipeline-root",
               "{{$.inputs.parameters['data_pipeline_root']}}",
-              "--test_instances-output-path",
+              "--test_instances",
               "{{$.inputs.parameters['test_instances']}}",
-              "--endpoint-output-path",
+              "--endpoint",
               "{{$.inputs.artifacts['endpoint'].path}}"
             ],
             "command": [
@@ -883,42 +895,50 @@
               "{{$}}",
               "--function_to_execute",
               "train_model",
-              "--project-id-output-path",
+              "--project-id",
               "{{$.inputs.parameters['project_id']}}",
-              "--data-region-output-path",
+              "--data-region",
               "{{$.inputs.parameters['data_region']}}",
-              "--hptune_region-output-path",
+              "--hptune-region",
               "{{$.inputs.parameters['hptune_region']}}",
-              "--data-pipeline-root-output-path",
+              "--data-pipeline-root",
               "{{$.inputs.parameters['data_pipeline_root']}}",
-              "--training-container-image-uri-output-path",
+              "--training-container-image-uri",
               "{{$.inputs.parameters['training_container_image_uri']}}",
-              "--serving-container-image-uri-output-path",
+              "--serving-container-image-uri",
               "{{$.inputs.parameters['serving_container_image_uri']}}",
-              "--custom-job-service-account-output-path",
+              "--custom-job-service-account",
               "{{$.inputs.parameters['custom_job_service_account']}}",
-              "--machine-type-output-path",
+              "--machine-type",
               "{{$.inputs.parameters['machine_type']}}",
-              "--accelerator-type-output-path",
+              "--accelerator-type",
               "{{$.inputs.parameters['accelerator_type']}}",
-              "--accelerator-count-output-path",
+              "--accelerator-count",
               "{{$.inputs.parameters['accelerator_count']}}",
-              "--input-dataset-output-path",
+              "--input-dataset",
               "{{$.inputs.artifacts['input_dataset'].path}}",
-              "--input_data_schema-output-path",
+              "--input_data_schema",
               "{{$.inputs.parameters['input_data_schema']}}",
-              "--output-model-output-path",
+              "--output-model",
               "{{$.outputs.artifacts['output_model'].path}}",
-              "--basic-metrics-output-path",
+              "--basic-metrics",
               "{{$.outputs.artifacts['basic_metrics'].path}}",
-              "--classification-metrics-output-path",
+              "--classification-metrics",
               "{{$.outputs.artifacts['classification_metrics'].path}}",
-              "--feature-importance-dataset-output-path",
+              "--feature-importance-dataset",
               "{{$.outputs.artifacts['feature_importance_dataset'].path}}",
-              "--instance-schema-dataset-output-path",
+              "--instance-schema-dataset",
               "{{$.outputs.artifacts['instance_schema'].path}}",
-              "--vpc-network-output-path",
-              "{{$.inputs.parameters['vpc_network']}}"
+              "--vpc-network",
+              "{{$.inputs.parameters['vpc_network']}}",
+              "--output_model_file_name",
+              "{{$.inputs.parameters['output_model_file_name']}}",
+              "--train-additional-args",
+              "{{$.inputs.parameters['train_additional_args']}}",
+              "--hp-config-suggestions-per-request",
+              "{{$.inputs.parameters['hp_config_suggestions_per_request']}}",
+              "--hp-config-max-trials",
+              "{{$.inputs.parameters['hp_config_max_trials']}}"
             ],
             "command": [
               "python",
@@ -930,7 +950,7 @@
       }
     },
     "pipelineInfo": {
-      "name": "training-template"
+      "name": "training-pipeline-template"
     },
     "root": {
       "dag": {
@@ -1170,6 +1190,12 @@
                 "data_region": {
                   "componentInputParameter": "data_region"
                 },
+                "hp_config_max_trials": {
+                  "componentInputParameter": "hp_config_max_trials"
+                },
+                "hp_config_suggestions_per_request": {
+                  "componentInputParameter": "hp_config_suggestions_per_request"
+                },
                 "hptune_region": {
                   "componentInputParameter": "hptune_region"
                 },
@@ -1179,11 +1205,17 @@
                 "machine_type": {
                   "componentInputParameter": "machine_type"
                 },
+                "output_model_file_name": {
+                  "componentInputParameter": "output_model_file_name"
+                },
                 "project_id": {
                   "componentInputParameter": "project_id"
                 },
                 "serving_container_image_uri": {
                   "componentInputParameter": "serving_container_image_uri"
+                },
+                "train_additional_args": {
+                  "componentInputParameter": "train_additional_args"
                 },
                 "training_container_image_uri": {
                   "componentInputParameter": "training_container_image_uri"
@@ -1234,6 +1266,12 @@
           "gcs_data_output_folder": {
             "type": "STRING"
           },
+          "hp_config_max_trials": {
+            "type": "INT"
+          },
+          "hp_config_suggestions_per_request": {
+            "type": "INT"
+          },
           "hptune_region": {
             "type": "STRING"
           },
@@ -1267,10 +1305,16 @@
           "monitoring_user_emails": {
             "type": "STRING"
           },
+          "output_model_file_name": {
+            "type": "STRING"
+          },
           "project_id": {
             "type": "STRING"
           },
           "serving_container_image_uri": {
+            "type": "STRING"
+          },
+          "train_additional_args": {
             "type": "STRING"
           },
           "training_container_image_uri": {
@@ -1315,8 +1359,17 @@
       "enable_model_monitoring": {
         "stringValue": "False"
       },
+      "hp_config_max_trials": {
+        "intValue": "30"
+      },
+      "hp_config_suggestions_per_request": {
+        "intValue": "5"
+      },
       "machine_type": {
         "stringValue": "n1-standard-8"
+      },
+      "output_model_file_name": {
+        "stringValue": "model.txt"
       }
     }
   }

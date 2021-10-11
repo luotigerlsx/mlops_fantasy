@@ -28,6 +28,7 @@ inputs:
 - {name: accelerator_count, type: Integer}
 - {name: vpc_network, type: String, optional: true}
 - {name: train_additional_args, type: String, optional: true}
+- {name: output_model_file_name, type: String, optional: true}
 - {name: hp_config_max_trials, type: Integer, optional: true}
 - {name: hp_config_suggestions_per_request, type: Integer, optional: true}
 outputs:
@@ -61,6 +62,7 @@ implementation:
       --feature-importance-dataset, {outputPath: feature_importance_dataset},
       --instance-schema-dataset, {outputPath: instance_schema},
       --vpc-network, {inputValue: vpc_network},
+      --output_model_file_name, {inputValue: output_model_file_name},
       --train-additional-args, {inputValue: train_additional_args},
       --hp-config-suggestions-per-request, {inputValue: hp_config_suggestions_per_request},
       --hp-config-max-trials, {inputValue: hp_config_max_trials}

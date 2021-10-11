@@ -70,6 +70,7 @@ python -m pipelines.training_pipeline_runner \
   --gcs_data_output_folder $GCS_OUTPUT_PATH \
   --training_container_image_uri "$TRAIN_IMAGE_URI" \
   --train_additional_args $TRAIN_ARGS \
+  --output_model_file_name model.txt \
   --serving_container_image_uri "$SERVING_IMAGE_URI" \
   --custom_job_service_account $CUSTOM_JOB_SA \
   --hptune_region $PIPELINE_REGION \

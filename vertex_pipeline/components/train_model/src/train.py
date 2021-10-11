@@ -21,7 +21,6 @@ from kfp.v2.components.executor import Executor
 from kfp.v2.dsl import Artifact, ClassificationMetrics, Dataset, Input, Metrics, Model, Output
 
 FEATURE_IMPORTANCE_FILENAME = 'feature_importance.csv'
-
 INSTANCE_SCHEMA_FILENAME = 'instance_schema.yaml'
 
 
@@ -39,6 +38,7 @@ def train_model(
     classification_metrics: Output[ClassificationMetrics],
     feature_importance_dataset: Output[Dataset],
     instance_schema: Output[Artifact],
+    output_model_file_name: str = 'model.txt',
     machine_type: str = "n1-standard-8",
     accelerator_count: int = 0,
     accelerator_type: str = 'ACCELERATOR_TYPE_UNSPECIFIED',
@@ -69,6 +69,7 @@ def train_model(
       feature_importance_dataset: The output artifact of the feature
           importance CSV file.
       instance_schema: The output artifact of the schema of the features.
+      output_model_file_name: the file name of the output model.
       machine_type: The machine type to serve the prediction requests.
       accelerator_type: The type of accelerator(s) that may be attached
         to the machine as per `accelerator_count`.
@@ -102,8 +103,10 @@ def train_model(
     model_serving_container_image_uri=serving_container_image_uri,
     model_serving_container_predict_route='/predict',
     model_serving_container_health_route='/health',
-    model_serving_container_environment_variables={'TRAINING_DATA_SCHEMA':
-                                                     input_data_schema})
+    model_serving_container_environment_variables={
+      'TRAINING_DATA_SCHEMA': input_data_schema,
+      'MODEL_FILENAME': output_model_file_name
+    })
 
   # Create a millisecond timestamped model display name
   model_display_name = f'model-{int(datetime.now().timestamp() * 1000)}'
@@ -115,6 +118,8 @@ def train_model(
   label = fields[-1]
   features = ','.join(fields[0:-1])
 
+  # It is possible to make all train_args passed using `train_additional_args`
+  # The below is an example to show different usage
   train_args = [
     '--training_data_uri', input_dataset.uri,
     '--training_data_schema', input_data_schema,

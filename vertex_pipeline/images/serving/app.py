@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import os
+import logging
 
 import flask
 import lightgbm as lgb
@@ -27,15 +27,16 @@ logging.getLogger().setLevel(logging.INFO)
 # model load code
 ################################################################################
 
-MODEL_FILENAME = 'model.txt'
 # Need to set env parameter through
 # model_serving_container_environment_variables={'TRAINING_DATA_SCHEMA':
 # data_schema},
 DATA_SCHEMA = os.environ['TRAINING_DATA_SCHEMA']
 features = [field.split(':') for field in DATA_SCHEMA.split(';')][0:-1]
 feature_names = [item[0] for item in features]
-
 logging.info(f'feature schema: {features}')
+
+MODEL_FILENAME = os.environ['MODEL_FILENAME']
+logging.info(f'model file name: {MODEL_FILENAME}')
 
 
 def load_model(model_store):
